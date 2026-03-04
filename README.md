@@ -49,3 +49,15 @@ Hệ thống va chạm và xử lý logic gameplay.
 Camera follow theo nhân vật.
 
 Tổ chức code theo hướng module hóa.
+
+
+#####
+
+Tạo môi trường:
+python3 -m venv .venv
+
+Kích hoạt môi trường:
+source .venv/bin/activate
+
+Chạy game:
+python3 game.py
