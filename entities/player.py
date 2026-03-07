@@ -8,6 +8,7 @@ from pyglet import gl
 from pyglet.window import key
 import os
 from cocos.draw import Line
+from .entity import Entity
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -121,7 +122,7 @@ def load_animations(folder_path):
         ]
 
         animation = pyglet.image.Animation.from_image_sequence(
-            frames, 0.083, isLoop[name]
+            frames, 0.1, isLoop[name]
         )
 
         animations[name] = animation
@@ -129,21 +130,23 @@ def load_animations(folder_path):
 
     return animations
 
-class PlayerSprite(Layer):
+class PlayerSprite(Entity):
     is_event_handler = True
-    def __init__(self):
-        super().__init__()
+    def __init__(self, hp, mass):
+        super().__init__(hp, mass)
         self.locked = False
+        self.hitbox_w = 40
+        self.hitbox_h = 60
         self.locktimer = 0
         self.isGoingtoRight = True
         self.animations = load_animations(ASSET_PATH)
         self.sprite = Sprite(self.animations["Idle"])
-        self.sprite.scale = 2
+        self.sprite.scale = 1.5
         self.current_state = "Idle"
         self.add(self.sprite)
         self.keys = set()
-        self.schedule(self.update)
-        self.moving = 0
+        self.dashCD = 0
+        self.jumpCheck = False
 
     def play(self, state):
         if self.current_state != state:
@@ -157,36 +160,32 @@ class PlayerSprite(Layer):
         if symbol in self.keys:
             self.keys.remove(symbol)
 
-    def update(self, dt):
-        if (self.locked):
-            self.locktimer += dt
-            duration = len(self.animations[self.current_state].frames) * 0.083
-            if self.locktimer >= duration:
-                self.play("Idle")
-                self.locked = False
-                self.locktimer = 0
-            else:
-                self.sprite.x += self.moving
-                return
-        speed = 220 * dt
 
-        shift_pressed = key.LSHIFT in self.keys or key.RSHIFT in self.keys
-        if not self.locked:
-            if not self.keys:
-                self.play("Idle")
-                pass
-            if key.RIGHT in self.keys:
-                self.sprite.x += speed
-                self.sprite.scale_x = 1
-                self.play("Run")
-                self.moving = speed
-            if key.LEFT in self.keys:
-                self.sprite.x -= speed
-                self.sprite.scale_x = -1
-                self.play("Run")
-                self.moving = speed
-        if shift_pressed:
-            self.sprite.x += speed * self.sprite.scale_x * 1.3
-            self.play("Roll")
-            self.locked = True
-            self.moving = speed * self.sprite.scale_x * 1.3
+    def update(self, dt):
+        vx = 0
+        self.massEfected()
+        vy = self.vector[1]
+        if key.RIGHT in self.keys:
+            vx += 4
+            self.play("Run")
+            self.isGoingtoRight = True
+            self.sprite.scale_x = 1
+        elif key.LEFT in self.keys:
+            vx += -4
+            self.play("Run")
+            self.isGoingtoRight = False
+            self.sprite.scale_x = -1
+        if key.SPACE in self.keys:
+            if self.vector[1] == -self.mass * 0.4:
+                vy = 10
+                self.jumpCheck = True
+                self.play("Jump")
+        if vy < -self.mass * 0.4:
+            self.play("Fall")
+        elif not self.keys:
+            self.vector[0] = 0
+            self.jumpCheck = False
+            self.play("Idle")
+        self.vector = [vx, vy]
+
+
