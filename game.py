@@ -59,7 +59,6 @@ class GameLayer(Layer):
         if self.collide(self.player.x + vx,self.player.y):
             vx = 0
         self.player.vector = [vx, vy]
-        print(vx, vy)
         self.player.move()
 
     def update(self, dt):
