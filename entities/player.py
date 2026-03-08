@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_PATH = os.path.join(BASE_DIR, "assets", "images", "player")
 SCREENW = 800
 SCREENH = 600
-SPEED = 1
+SPEED = 5
 ANIM_SCALE = 0.08
 LOCK_ACTION = [key.X, key.C, key.Z]
 
@@ -162,7 +162,6 @@ class PlayerSprite(Entity):
         if symbol in self.keys:
             self.keys.remove(symbol)
     def lock_action(self, dt):
-        print(self.locktimer)
         lock_action = False
         if self.vector[1] == -self.mass * 0.4 and self.current_state != "Dash":
             self.vector[0] = 0
