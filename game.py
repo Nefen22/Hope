@@ -19,9 +19,12 @@ class GameLayer(Layer):
         super().__init__()
         self.map = Map("assets/map.tmx")
         self.map.draw(self)
-        self.player = PlayerSprite(100, 2)
+        self.player = PlayerSprite(100, 0.1)
         self.player.position = (WINDOW_SIZE[0]/2, WINDOW_SIZE[1]/2 + 80)
         self.add(self.player)
+        self.logic_timer = 0
+        self.logic_step = 0.05  # 100 ms
+
         self.schedule(self.update)
 
     def is_blocked(self, x, y):
@@ -52,6 +55,7 @@ class GameLayer(Layer):
         return False
 
     def playerMove(self):
+
         vx = self.player.vector[0]
         vy = self.player.vector[1]
         if self.collide(self.player.x ,self.player.y + vy):
@@ -59,12 +63,15 @@ class GameLayer(Layer):
         if self.collide(self.player.x + vx,self.player.y):
             vx = 0
         self.player.vector = [vx, vy]
-        print(vx, vy)
         self.player.move()
 
     def update(self, dt):
-        self.player.update(dt)
-        self.playerMove()
+        self.logic_timer += dt
+
+        if self.logic_timer < self.logic_step:
+            self.player.update(self.logic_timer)
+            self.playerMove()
+            self.logic_timer = 0
 
 
 def main():

@@ -15,6 +15,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_PATH = os.path.join(BASE_DIR, "assets", "images", "player")
 SCREENW = 800
 SCREENH = 600
+SPEED = 1
+ANIM_SCALE = 0.08
+LOCK_ACTION = [key.X, key.C, key.Z]
 
 isLoop = {
     "Run": True,
@@ -122,7 +125,7 @@ def load_animations(folder_path):
         ]
 
         animation = pyglet.image.Animation.from_image_sequence(
-            frames, 0.1, isLoop[name]
+            frames, ANIM_SCALE, isLoop[name]
         )
 
         animations[name] = animation
@@ -159,31 +162,68 @@ class PlayerSprite(Entity):
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys:
             self.keys.remove(symbol)
+    def lock_action(self, dt):
+        print(self.locktimer)
+        lock_action = False
+        if self.vector[1] == -self.mass * 0.4 and self.current_state != "Dash":
+            self.vector[0] = 0
+        if self.locktimer > 0:
+            self.locktimer = max(0, self.locktimer - dt)
+            return True
+        if key.X in self.keys:
+            self.play("Attack")
+            lock_action = True
 
+        if key.C in self.keys:
+            self.play("Attack2")
+            lock_action = True
+
+        if key.Z in self.keys:
+            self.play("Dash")
+            self.vector[0] = SPEED*3 if self.isGoingtoRight else -SPEED*3
+            lock_action = True
+
+        if lock_action:
+            self.locktimer = len(self.animations[self.current_state].frames) * ANIM_SCALE
+            list(map(lambda x: self.on_key_release(x, None), LOCK_ACTION))
+            return True
+        return False
 
     def update(self, dt):
-        vx = 0
+        vx = self.vector[0]
         self.massEfected()
         vy = self.vector[1]
+        if self.lock_action(dt):
+            return
+        self.locktimer = 0
         if key.RIGHT in self.keys:
-            vx += 4
-            self.play("Run")
+            vx = SPEED
+            if self.current_state not in ["Jump", "JumpFallInbetween"]:
+                self.play("Run")
+            else:
+                self.play("JumpFallInbetween")
             self.isGoingtoRight = True
             self.sprite.scale_x = 1
         elif key.LEFT in self.keys:
-            vx += -4
-            self.play("Run")
+            vx = -SPEED
+            if self.current_state not in ["Jump", "JumpFallInbetween"]:
+                self.play("Run")
+            else:
+                self.play("JumpFallInbetween")
             self.isGoingtoRight = False
             self.sprite.scale_x = -1
         if key.SPACE in self.keys:
             if self.vector[1] == -self.mass * 0.4:
-                vy = 10
+                vy = SPEED*3
                 self.jumpCheck = True
                 self.play("Jump")
+
         if vy < -self.mass * 0.4:
             self.play("Fall")
-        elif not self.keys:
-            self.vector[0] = 0
+            self.vector = [vx, vy]
+            return
+        if not self.keys:
+            vx = 0
             self.jumpCheck = False
             self.play("Idle")
         self.vector = [vx, vy]

@@ -11,7 +11,6 @@ class Map():
         map_ = load(path)
         map_ = map_.find(RectMapLayer)
         for index, layer in enumerate(map_):
-            print(layer)
             ele = layer[1]
             ele.set_view(0, 0, ele.px_width, ele.px_height)
             ele.position = (0, 0)
@@ -22,5 +21,4 @@ class Map():
             layer.add(ele, z=index)
 
     def get_tile_at_pixel(self, x, y):
-
         return [ele.get_at_pixel(x, y) for ele, index in self.layers if ele.get_at_pixel(x, y)]

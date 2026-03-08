@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "map.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -27,11 +27,11 @@
             "scaleInEditor": 1
         },
         "map.tmx": {
-            "scale": 0.5,
+            "scale": 0.75,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 423,
-                "y": 480
+                "x": 436.66666666666663,
+                "y": 392
             }
         },
         "map.tmx#Swampset": {
