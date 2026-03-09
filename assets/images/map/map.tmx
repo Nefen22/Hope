@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="24" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="1">
- <tileset firstgid="1" name="Background_0" tilewidth="32" tileheight="32" tilecount="312" columns="24">
-  <image source="Final/Background_0.png" width="768" height="416"/>
- </tileset>
+ <tileset firstgid="1" source="Background_0.tsx"/>
  <tileset firstgid="313" source="Background_1.tsx"/>
  <tileset firstgid="625" source="Grass_background_1.tsx"/>
  <tileset firstgid="768" source="Grass_background_2.tsx"/>

@@ -17,19 +17,17 @@ import pprint
 class GameLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.map = Map("assets/map.tmx")
+        self.map = Map("assets/images/map/map.tmx")
         self.map.draw(self)
         self.player = PlayerSprite(100, 2)
         self.player.position = (WINDOW_SIZE[0]/2, WINDOW_SIZE[1]/2 + 80)
-        self.add(self.player)
+        self.add(self.player, z = len(self.map.layers))
         self.schedule(self.update)
 
     def is_blocked(self, x, y):
-        for (layer, index) in self.map.layers:
-
-            tile = layer.get_at_pixel(x, y)
-            if tile and tile.get("solid"):
-                return True
+        tile = self.map.layers[-1][0].get_at_pixel(x, y)
+        if tile and tile.get("solid"):
+            return True
 
         return False
 
@@ -52,13 +50,24 @@ class GameLayer(Layer):
         return False
 
     def playerMove(self):
-        vx = self.player.vector[0]
-        vy = self.player.vector[1]
-        if self.collide(self.player.x ,self.player.y + vy):
-            vy = 0
-        if self.collide(self.player.x + vx,self.player.y):
-            vx = 0
-        self.player.vector = [vx, vy]
+        vx, vy = self.player.vector
+        # Giá trị dùng để tính pixel cần để char xuống đất
+        subVx, subVy = 0, 0
+        if self.collide(self.player.x, self.player.y + vy):
+            while not self.collide(self.player.x, self.player.y + subVy):
+                subVy += (1 if vy > 0 else -1)
+            else:
+                subVy -= (1 if vy > 0 else -1)
+                vy = 0
+        print(vx, vy)
+        if self.collide(self.player.x + vx, self.player.y):
+            while not self.collide(self.player.x + subVx, self.player.y):
+                subVx += (1 if vx > 0 else -1)
+            else:
+                subVx -= (1 if vx > 0 else -1)
+                vx = 0
+        print(vx, vy, subVx)
+        self.player.vector = [vx + subVx, vy + subVy]
         self.player.move()
 
     def update(self, dt):
