@@ -15,8 +15,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_PATH = os.path.join(BASE_DIR, "assets", "images", "player")
 SCREENW = 800
 SCREENH = 600
-SPEED = 1
-ANIM_SCALE = 0.08
+SPEED = 5
+ANIM_SCALE = 0.09
 LOCK_ACTION = [key.X, key.C, key.Z]
 
 isLoop = {
@@ -62,40 +62,49 @@ isLoop = {
     "WallSlide": True,
 }
 
-def auto_crop_image(image):
-    image_data = image.get_image_data()
-    raw = image_data.get_data('RGBA', image.width * 4)
+animWidth = {
+    "Run": 40,
+    "Roll": False,
+    "Idle": 40,
 
-    width = image.width
-    height = image.height
+    "Attack": 80,
+    "Attack2": 80,
+    "AttackNoMovement": False,
+    "Attack2NoMovement": False,
+    "AttackCombo": False,
+    "AttackComboNoMovement": False,
 
-    min_x = width
-    max_x = 0
-    min_y = height
-    max_y = 0
+    "Crouch": True,
+    "CrouchAttack": False,
+    "CrouchFull": True,
+    "CrouchTransition": False,
+    "CrouchWalk": True,
 
-    for y in range(height):
-        for x in range(width):
-            index = (y * width + x) * 4
-            alpha = raw[index + 3]
+    "Dash": 40,
 
-            if alpha > 10:  # pixel không trong suốt
-                min_x = min(min_x, x)
-                max_x = max(max_x, x)
-                min_y = min(min_y, y)
-                max_y = max(max_y, y)
+    "Death": False,
+    "DeathNoMovement": False,
 
-    if min_x > max_x or min_y > max_y:
-        return image  # ảnh rỗng
+    "Fall": 40,
 
-    cropped = image.get_region(
-        x=min_x,
-        y=min_y,
-        width=max_x - min_x,
-        height=max_y - min_y
-    )
+    "Hit": False,
 
-    return cropped
+    "Jump": 40,
+    "JumpFallInbetween": 40,
+
+    "Slide": False,
+    "SlideFull": False,
+    "SlideTransitionStart": False,
+    "SlideTransitionEnd": False,
+
+    "TurnAround": False,
+
+    "WallClimb": True,
+    "WallClimbNoMovement": True,
+    "WallHang": True,
+    "WallSlide": True,
+}
+
 
 def load_animations(folder_path):
     animations = {}
@@ -113,14 +122,12 @@ def load_animations(folder_path):
         frame_count = image.width // 120
 
         frames = [
-            auto_crop_image(
                 image.get_region(
-                    x=i * frame_block,
+                    x=i * frame_block + 40,
                     y=0,
-                    width=120,
+                    width=animWidth[name],
                     height=80,
                 )
-            )
             for i in range(frame_count)
         ]
 
@@ -144,7 +151,6 @@ class PlayerSprite(Entity):
         self.isGoingtoRight = True
         self.animations = load_animations(ASSET_PATH)
         self.sprite = Sprite(self.animations["Idle"])
-        self.sprite.scale = 1.5
         self.current_state = "Idle"
         self.add(self.sprite)
         self.keys = set()
@@ -163,7 +169,6 @@ class PlayerSprite(Entity):
         if symbol in self.keys:
             self.keys.remove(symbol)
     def lock_action(self, dt):
-        print(self.locktimer)
         lock_action = False
         if self.vector[1] == -self.mass * 0.4 and self.current_state != "Dash":
             self.vector[0] = 0
@@ -227,5 +232,4 @@ class PlayerSprite(Entity):
             self.jumpCheck = False
             self.play("Idle")
         self.vector = [vx, vy]
-
 
