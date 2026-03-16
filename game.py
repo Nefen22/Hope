@@ -1,83 +1,295 @@
-from cocos.director import director
-from cocos.layer import Layer
-from cocos.scene import Scene
-from cocos.tiles import load, RectMapLayer
-from cocos.layer import ColorLayer
-from cocos.sprite import Sprite
-from maps.map import Map
-import os
-from entities import *
-import pyglet
-
-WINDOW_SIZE = (800, 600)
 import cocos
-import pyglet
-import pprint
+import random
+from cocos.scene import Scene
+from cocos.layer import ScrollableLayer
+from cocos.director import director
 
-class GameLayer(Layer):
-    def __init__(self):
-        super().__init__()
-        self.map = Map("assets/map.tmx")
-        self.map.draw(self)
-        self.player = PlayerSprite(100, 0.1)
-        self.player.position = (WINDOW_SIZE[0]/2, WINDOW_SIZE[1]/2 + 80)
-        self.add(self.player)
-        self.logic_timer = 0
-        self.logic_step = 0.05  # 100 ms
+from maps.map import GameMapManager
+from entities.player import PlayerSprite
+from entities.enemy import GoblinWarrior, GoblinGiant, spawn_enemy
+from entities.item import Item
+from entities.block import Block
+from entities.boss import BossGoblin, BossMinotaur, Boss
+from ui import HUD
 
+# ── Progression constants ─────────────────────────────────────────────────────
+# States for the boss phase machine
+PHASE_TRAVEL      = "travel"      # Player tiến về cuối map
+PHASE_BOSS1       = "boss1"       # Đánh Boss Goblin
+PHASE_TRANSITION  = "transition"  # Animation chuyển sang boss 2
+PHASE_BOSS2       = "boss2"       # Đánh Boss Minotaur
+PHASE_VICTORY     = "victory"     # Game cleared
+
+TRANSITION_DURATION  = 3.0   # Thời gian hiển thị thông điệp chuyển màn
+MINOTAUR_SPAWN_DELAY = 6.0   # Sau bao lâu kể từ khi Goblin Boss chết thì spawn Minotaur
+
+
+class GameLayer(ScrollableLayer):
+    is_event_handler = True
+
+    # ──────────────────────────────────────────────────────────────────────────
+    def __init__(self, map_manager, hud):
+        super(GameLayer, self).__init__()
+
+        self.map_manager  = map_manager
+        self.walls_layer  = map_manager.get_walls_layer()
+        self.hud          = hud
+        self.items_collected = 0
+
+        # Camera flag
+        self.is_boss_room = False
+
+        # Entity list
+        self.entities: list = []
+
+        # ── Player ────────────────────────────────────────────────────────────
+        self.player = PlayerSprite()
+        self.player.position = (100, 300)
+        self.add(self.player, z=10)
+        self.entities.append(self.player)
+
+        # ── Static starter enemies / items / blocks (beginning of map) ───────
+        self._spawn_starter_content()
+
+        # ── Procedural content along the path (800 … boss_trigger_x - 400) ──
+        self._spawn_path_content()
+
+        # ── Boss management ───────────────────────────────────────────────────
+        self.boss          = None    # active boss entity
+        self.boss_spawned  = False
+        self.boss2_spawned = False
+        self.phase         = PHASE_TRAVEL
+        self._transition_timer = 0.0
+
+        # ── Register handlers ─────────────────────────────────────────────────
+        director.window.push_handlers(self.player)
         self.schedule(self.update)
 
-    def is_blocked(self, x, y):
-        for (layer, index) in self.map.layers:
+    # ──────────────────────────────────────────────────────────────────────────
+    def _add_entity(self, entity, z=9):
+        self.add(entity, z=z)
+        self.entities.append(entity)
 
-            tile = layer.get_at_pixel(x, y)
-            if tile and tile.get("solid"):
-                return True
+    def _spawn_starter_content(self):
+        """Fixed enemies/items/blocks near start."""
+        # One warrior + a coin on starter platform area
+        w = GoblinWarrior(600, 300, walk_range=200)
+        self._add_entity(w)
 
-        return False
+        for item_x in [300, 500, 800]:
+            self._add_entity(Item(item_x, 300, "Coin"), z=8)
 
-    def collide(self, x, y):
+        self._add_entity(Block(400, 420, item_type="Invincible"), z=8)
+        self._add_entity(Block(450, 420, item_type="Coin"), z=8)
 
-        w = self.player.hitbox_w / 2
-        h = self.player.hitbox_h / 2
+    def _spawn_path_content(self):
+        """Procedurally populate the entire path up to the boss room."""
+        boss_dist   = self.map_manager.boss_trigger_x
+        spawn_start = 800
+        step        = 480
 
-        points = [
-            (x - w, y - h),
-            (x + w, y - h),
-            (x - w, y + h),
-            (x + w, y + h)
+        for x in range(spawn_start, int(boss_dist) - 300, step):
+            # 1–3 enemies at staggered sub-positions
+            for _ in range(random.randint(1, 3)):
+                ex = x + random.randint(0, step - 80)
+                self._add_entity(spawn_enemy(ex, 300, walk_range=160))
+
+            # 2–4 coins + occasional Invincible
+            for _ in range(random.randint(2, 4)):
+                ix = x + random.randint(20, step - 20)
+                itype = random.choice(["Coin", "Coin", "Coin", "Invincible"])
+                self._add_entity(Item(ix, 300, itype), z=8)
+
+            # 1–2 breakable blocks
+            for _ in range(random.randint(1, 2)):
+                bx = x + random.randint(40, step - 40)
+                btype = random.choice(["Coin", "Invincible"])
+                self._add_entity(Block(bx, 420, item_type=btype), z=8)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    def spawn_item(self, x, y, item_type):
+        item = Item(x, y, item_type)
+        self.add(item, z=8)
+        self.entities.append(item)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    def _spawn_boss1(self):
+        cx = self.map_manager.boss_room_center_x
+        self.boss = BossGoblin(cx, 300)
+        self._add_entity(self.boss)
+        self.boss_spawned  = True
+        self.phase         = PHASE_BOSS1
+        self.hud.update_boss_hp(self.boss.hp, self.boss.max_hp, self.boss.NAME)
+
+    def _spawn_boss2(self):
+        # Minotaur xuất hiện ngay tại trung tâm boss room (cùng phòng nhưng boss mới)
+        cx = self.map_manager.boss_room_center_x + 300
+        self.boss = BossMinotaur(cx, 300)
+        self._add_entity(self.boss)
+        self.boss2_spawned = True
+        self.phase         = PHASE_BOSS2
+        self.hud.update_boss_hp(self.boss.hp, self.boss.max_hp, self.boss.NAME)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    def check_collisions(self):
+        player_rect = self.player.get_logical_rect()
+        attack_rect = getattr(self.player, 'attack_rect', None)
+
+        for entity in self.entities:
+
+            # ── Item pickup ───────────────────────────────────────────────────
+            if isinstance(entity, Item) and not entity.is_collected:
+                if entity.check_pickup(self.player):
+                    if entity.item_type == "Coin":
+                        self.items_collected += 1
+                        self.hud.update_score(self.items_collected)
+                    elif entity.item_type == "Invincible":
+                        self.player.is_invincible   = True
+                        self.player.invincible_timer = 5.0
+
+            # ── Block break ───────────────────────────────────────────────────
+            if isinstance(entity, Block) and not entity.is_broken:
+                block_rect = entity.get_logical_rect()
+                if attack_rect and attack_rect.intersects(block_rect):
+                    drop = entity.break_block()
+                    if drop:
+                        self.spawn_item(entity.x, entity.y, drop)
+                elif (player_rect.intersects(block_rect)
+                      and self.player.velocity_y > 0
+                      and player_rect.top >= block_rect.bottom - 10):
+                    drop = entity.break_block()
+                    if drop:
+                        self.spawn_item(entity.x, entity.y + 32, drop)
+                        self.player.velocity_y = -100
+
+            # ── Enemy collision ────────────────────────────────────────────────
+            if isinstance(entity, (GoblinWarrior, GoblinGiant)) and not entity.is_dead:
+                enemy_rect = entity.get_logical_rect()
+
+                if attack_rect and attack_rect.intersects(enemy_rect):
+                    entity.take_damage(50)
+
+                elif player_rect.intersects(enemy_rect):
+                    if (player_rect.bottom >= enemy_rect.top - 10
+                            and self.player.velocity_y < 0):
+                        entity.take_damage(entity.hp)  # instant kill on head-stomp
+                        self.player.velocity_y = 300
+                        self.items_collected += entity.coin_drop
+                        self.hud.update_score(self.items_collected)
+                    else:
+                        dmg = 10 if isinstance(entity, GoblinWarrior) else 20
+                        if self.player.take_damage(dmg):
+                            self.hud.update_hp(self.player.hp)
+
+            # ── Boss collision ─────────────────────────────────────────────────
+            if isinstance(entity, (BossGoblin, BossMinotaur)):
+                if entity.is_dead:
+                    continue
+                boss_rect = entity.get_logical_rect()
+
+                if attack_rect and attack_rect.intersects(boss_rect):
+                    entity.take_damage(50)
+                    self.hud.update_boss_hp(entity.hp, entity.max_hp, entity.NAME)
+
+                elif player_rect.intersects(boss_rect):
+                    dmg = 25 if isinstance(entity, BossGoblin) else 35
+                    if self.player.take_damage(dmg):
+                        self.hud.update_hp(self.player.hp)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    def update(self, dt):
+        # ── Purge fully killed entities ────────────────────────────────────────
+        self.entities = [
+            e for e in self.entities
+            if not getattr(e, '_killed', False) or isinstance(e, PlayerSprite)
         ]
 
-        for px, py in points:
-            if self.is_blocked(px, py):
-                return True
+        # ── Entity update ──────────────────────────────────────────────────────
+        for entity in list(self.entities):
+            if hasattr(entity, 'is_collected') and entity.is_collected: continue
+            if hasattr(entity, 'is_broken')   and entity.is_broken:    continue
+            if isinstance(entity, (BossGoblin, BossMinotaur)):
+                entity.update(dt, self.walls_layer, self.player)
+            elif isinstance(entity, (GoblinWarrior, GoblinGiant)):
+                entity.update(dt, self.walls_layer)
+            elif isinstance(entity, PlayerSprite):
+                entity.update(dt, self.walls_layer)
 
-        return False
+        self.check_collisions()
 
-    def playerMove(self):
 
-        vx = self.player.vector[0]
-        vy = self.player.vector[1]
-        if self.collide(self.player.x ,self.player.y + vy):
-            vy = 0
-        if self.collide(self.player.x + vx,self.player.y):
-            vx = 0
-        self.player.vector = [vx, vy]
-        self.player.move()
+        # ── Progress bar ───────────────────────────────────────────────────────
+        boss_dist   = self.map_manager.boss_trigger_x
+        curr_dist   = min(self.player.x, boss_dist)
+        percentage  = (curr_dist / boss_dist * 100) if boss_dist > 0 else 100
 
-    def update(self, dt):
-        self.logic_timer += dt
+        if self.phase == PHASE_TRAVEL:
+            self.hud.update_progress(percentage)
 
-        if self.logic_timer < self.logic_step:
-            self.player.update(self.logic_timer)
-            self.playerMove()
-            self.logic_timer = 0
+        # ── Phase machine ──────────────────────────────────────────────────────
 
+        # Travel → spawn Boss 1
+        if self.phase == PHASE_TRAVEL and percentage >= 100:
+            self._spawn_boss1()
+
+        # Boss 1 → transition
+        elif self.phase == PHASE_BOSS1:
+            if self.boss and self.boss.is_dead:
+                self.phase = PHASE_TRANSITION
+                self._transition_timer = 0.0
+                self.hud.boss_defeated(BossGoblin.NAME)
+                self.hud.show_transition(
+                    "► GOBLIN KING defeated! The Minotaur is coming... ◄"
+                )
+
+        # Transition: đếm thời gian → tự động spawn Minotaur
+        elif self.phase == PHASE_TRANSITION:
+            self._transition_timer += dt
+            if self._transition_timer >= TRANSITION_DURATION:
+                self.hud.hide_transition()
+                self.hud.show_transition("⏳ Prepare yourself... Minotaur incoming!")
+            if not self.boss2_spawned and self._transition_timer >= MINOTAUR_SPAWN_DELAY:
+                self.hud.hide_transition()
+                self._spawn_boss2()
+
+        # Boss 2 → victory
+        elif self.phase == PHASE_BOSS2:
+            if self.boss and self.boss.is_dead:
+                self.phase = PHASE_VICTORY
+                self.hud.boss_defeated(BossMinotaur.NAME)
+                self.hud.show_transition("✦ YOU WIN! All Bosses Defeated! ✦")
+
+        # ── Camera ────────────────────────────────────────────────────────────
+        if self.parent:
+            if self.phase in (PHASE_BOSS1, PHASE_BOSS2):
+                # Camera khóa vào trung tâm boss room
+                self.parent.set_focus(self.map_manager.boss_room_center_x, 300)
+                # Soft wall: ngăn player lui
+                if self.player.x < self.map_manager.boss_room_left_limit:
+                    self.player.x = self.map_manager.boss_room_left_limit
+            else:
+                # Mario-style follow trong travel và transition
+                self.parent.set_focus(self.player.x, self.player.y)
+
+
+# ── Entry point ──────────────────────────────────────────────────────────────
 
 def main():
-    director.init(WINDOW_SIZE[0], WINDOW_SIZE[1])
-    scene = Scene(GameLayer())
+    director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
+
+    hud_layer = HUD()
+    map_mgr   = GameMapManager("assets/map.tmx")
+    scroller  = map_mgr.get_scrolling_manager()
+
+    game_layer = GameLayer(map_mgr, hud_layer)
+    scroller.add(game_layer, z=5)
+
+    scene = Scene()
+    scene.add(scroller,   z=0)
+    scene.add(hud_layer, z=10)
+
     director.run(scene)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
