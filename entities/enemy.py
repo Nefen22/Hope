@@ -93,6 +93,8 @@ class GoblinWarrior(Entity):
 
     def update(self, dt, walls_layer):
         if self.is_dead:
+            self.velocity_x = 0
+            self.update_physics(dt, walls_layer)
             self._die_timer += dt
             if self._die_timer >= 1.0 and not self._killed:
                 self._killed = True
@@ -189,6 +191,8 @@ class GoblinGiant(Entity):
 
     def update(self, dt, walls_layer):
         if self.is_dead:
+            self.velocity_x = 0
+            self.update_physics(dt, walls_layer)
             self._die_timer += dt
             if self._die_timer >= 1.2 and not self._killed:
                 self._killed = True

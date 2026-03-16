@@ -19,6 +19,24 @@ class Entity(Sprite):
         self.move_speed = 200
         self.jump_speed = 300
         
+    def kill(self):
+        """Khắc phục lỗi Set changed size during iteration: hoãn lệnh xoá node."""
+        import pyglet
+        
+        # Đánh dấu
+        self._killed = True
+        
+        # Gọi kill thực sự từ lớp cha, an toàn ngoài vòng lặp update chính
+        if getattr(self, '_kill_scheduled', False):
+            return
+        self._kill_scheduled = True
+        
+        def _safe_kill(dt):
+            if self.parent:
+                super(Entity, self).kill()
+                
+        pyglet.clock.schedule_once(_safe_kill, 0.0)
+        
     def get_logical_rect(self):
         """Trả về bounding box cố định nếu có thiết lập, tránh rung lắc hitbox do crop ảnh."""
         hit_w = getattr(self, 'hitbox_w', None)
@@ -55,7 +73,7 @@ class Entity(Sprite):
         # Bắt va chạm tường bằng `get_in_region`
         if walls_layer:
             epsilon = 0.1
-            tiles_x = walls_layer.get_in_region(new_rect_x.left + epsilon, new_rect_x.bottom + epsilon, new_rect_x.right - epsilon, new_rect_x.top - epsilon)
+            tiles_x = list(walls_layer.get_in_region(new_rect_x.left + epsilon, new_rect_x.bottom + epsilon, new_rect_x.right - epsilon, new_rect_x.top - epsilon))
             collide_x = False
             for cell in tiles_x:
                 if cell.tile and cell.tile.properties.get('solid'):
@@ -80,7 +98,7 @@ class Entity(Sprite):
         
         if walls_layer:
             epsilon = 0.1
-            tiles_y = walls_layer.get_in_region(new_rect_y.left + epsilon, new_rect_y.bottom + epsilon, new_rect_y.right - epsilon, new_rect_y.top - epsilon)
+            tiles_y = list(walls_layer.get_in_region(new_rect_y.left + epsilon, new_rect_y.bottom + epsilon, new_rect_y.right - epsilon, new_rect_y.top - epsilon))
             for cell in tiles_y:
                 if cell.tile and cell.tile.properties.get('solid'):
                     collide_y = True
@@ -95,6 +113,11 @@ class Entity(Sprite):
             if floor_hit:
                 self.on_ground = True
                 self.is_jumping = False
+                floor_y = max(cell.top for cell in tiles_y if cell.tile and cell.tile.properties.get('solid'))
+                self.y = floor_y + self.get_logical_rect().height / 2
+            else:
+                ceil_y = min(cell.bottom for cell in tiles_y if cell.tile and cell.tile.properties.get('solid'))
+                self.y = ceil_y - self.get_logical_rect().height / 2
                 
         # Áp dụng toạ độ mới cuối cùng
         self.position = (self.x + dx, self.y + dy)

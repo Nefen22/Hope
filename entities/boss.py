@@ -58,10 +58,14 @@ class BossGoblin(Entity):
 
     def update(self, dt, walls_layer, player):
         if self.is_dead:
+            self.velocity_x = 0
+            self.update_physics(dt, walls_layer)
             self._die_timer += dt
             return
 
         if self._is_dying:
+            self.velocity_x = 0
+            self.update_physics(dt, walls_layer)
             self._die_timer += dt
             if self._die_timer >= 1.2:
                 self.is_dead = True
@@ -163,6 +167,8 @@ class BossMinotaur(Entity):
 
     def update(self, dt, walls_layer, player):
         if self.is_dead:
+            self.velocity_x = 0
+            self.update_physics(dt, walls_layer)
             return
 
         if self._attack_cooldown > 0:
