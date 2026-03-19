@@ -62,49 +62,6 @@ isLoop = {
     "WallSlide": True,
 }
 
-animWidth = {
-    "Run": 40,
-    "Roll": False,
-    "Idle": 40,
-
-    "Attack": 80,
-    "Attack2": 80,
-    "AttackNoMovement": False,
-    "Attack2NoMovement": False,
-    "AttackCombo": False,
-    "AttackComboNoMovement": False,
-
-    "Crouch": True,
-    "CrouchAttack": False,
-    "CrouchFull": True,
-    "CrouchTransition": False,
-    "CrouchWalk": True,
-
-    "Dash": 40,
-
-    "Death": False,
-    "DeathNoMovement": False,
-
-    "Fall": 40,
-
-    "Hit": False,
-
-    "Jump": 40,
-    "JumpFallInbetween": 40,
-
-    "Slide": False,
-    "SlideFull": False,
-    "SlideTransitionStart": False,
-    "SlideTransitionEnd": False,
-
-    "TurnAround": False,
-
-    "WallClimb": True,
-    "WallClimbNoMovement": True,
-    "WallHang": True,
-    "WallSlide": True,
-}
-
 
 def load_animations(folder_path):
     animations = {}
@@ -123,9 +80,9 @@ def load_animations(folder_path):
 
         frames = [
                 image.get_region(
-                    x=i * frame_block + 40,
+                    x=i * frame_block,
                     y=0,
-                    width=animWidth[name],
+                    width=120,
                     height=80,
                 )
             for i in range(frame_count)
@@ -222,7 +179,6 @@ class PlayerSprite(Entity):
                 vy = SPEED*3
                 self.jumpCheck = True
                 self.play("Jump")
-
         if vy < -self.mass * 0.4:
             self.play("Fall")
             self.vector = [vx, vy]

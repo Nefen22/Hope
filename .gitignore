@@ -1,0 +1,21 @@
+# Python: Bỏ qua các file rác khi chạy code
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Editor: Bỏ qua cấu hình riêng của VS Code hoặc PyCharm
+.vscode/
+.idea/
+
+# Game Assets (Tùy chọn):
+# Nếu file .tmx là file nguồn và bạn muốn mỗi người tự quản lý bản đồ, hãy bỏ qua nó.
+# Nhưng thông thường file .tmx nên được giữ lại để đồng bộ map.
+# Chỉ nên bỏ qua các file backup của editor:
+*.tmx.bak
+*.tsx.bak
+
+# Hệ điều hành
+Thumbs.db
+.DS_Store
