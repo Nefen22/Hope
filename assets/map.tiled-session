@@ -1,5 +1,5 @@
 {
-    "activeFile": "images/map/Tiles.tsx",
+    "activeFile": "images/map/map.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -32,7 +32,6 @@
             "scaleInDock": 1
         },
         "Grass_background_2.tsx": {
-            "dynamicWrapping": true,
             "scaleInDock": 1
         },
         "Salt.tsx": {
@@ -52,7 +51,8 @@
             "dynamicWrapping": false
         },
         "images/map/Background_0.tsx": {
-            "scaleInDock": 1
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "images/map/Background_1.tsx": {
             "scaleInDock": 1
@@ -61,7 +61,6 @@
             "scaleInDock": 1
         },
         "images/map/Grass_background_2.tsx": {
-            "dynamicWrapping": false,
             "scaleInDock": 1
         },
         "images/map/Salt.tsx": {
@@ -73,19 +72,22 @@
             "scaleInEditor": 1
         },
         "images/map/map.tmx": {
-            "scale": 0.6439520958083832,
-            "selectedLayer": 0,
+            "scale": 1,
+            "selectedLayer": 6,
             "viewCenter": {
-                "x": 416.95648130928026,
-                "y": 190.23154175190626
+                "x": 486,
+                "y": 277
             }
         },
         "map.tmx": {
+            "expandedObjectLayers": [
+                3
+            ],
             "scale": 0.75,
-            "selectedLayer": 0,
+            "selectedLayer": 6,
             "viewCenter": {
-                "x": 417.99999999999994,
-                "y": 60.66666666666666
+                "x": 417.3333333333333,
+                "y": 250
             }
         },
         "map.tmx#Background_0": {
@@ -100,15 +102,17 @@
         "map.tmx",
         "images/map/map.tmx",
         "images/map/Salt.tsx",
+        "images/map/Background_0.tsx",
         "images/map/Tiles.tsx"
     ],
     "project": "",
     "property.type": "bool",
     "recentFiles": [
         "map.tmx",
-        "images/map/map.tmx",
-        "images/map/Salt.tsx",
         "images/map/Tiles.tsx",
+        "images/map/Background_0.tsx",
+        "images/map/Salt.tsx",
+        "images/map/map.tmx",
         "Tiles.tsx",
         "Background_0.tsx",
         "Swampset.tsx",

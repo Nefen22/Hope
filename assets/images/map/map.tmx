@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="24" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="1">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="24" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="11" nextobjectid="12">
  <tileset firstgid="1" source="Background_0.tsx"/>
  <tileset firstgid="313" source="Background_1.tsx"/>
  <tileset firstgid="625" source="Grass_background_1.tsx"/>
@@ -108,4 +108,14 @@
 979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979,979
 </data>
  </layer>
+ <objectgroup id="10" name="objects">
+  <object id="1" x="551.333" y="214.667" width="180.667" height="163.333"/>
+  <object id="4" x="190" y="310.667" width="582" height="91.3333"/>
+  <object id="5" x="-3" y="309" width="191" height="92"/>
+  <object id="6" x="32" y="213" width="286" height="15"/>
+  <object id="7" x="98" y="217" width="23" height="103"/>
+  <object id="8" x="260" y="217" width="24" height="54"/>
+  <object id="9" x="-2" y="398" width="684" height="101"/>
+  <object id="11" x="659" y="386" width="109" height="113"/>
+ </objectgroup>
 </map>
