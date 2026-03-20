@@ -3,10 +3,37 @@ from cocos.sprite import Sprite
 from cocos.layer import Layer
 
 class Entity(Sprite):
-    def __init__(self, image):
+    def __init__(self, *args, **kwargs):
+        # Handle different initialization patterns:
+        # 1. Entity(image) - for Block, Item, etc.
+        # 2. Entity(hp, mass) - for PlayerSprite
+        # 3. Entity(hp=100, mass=1.0) - keyword args
+        
+        image = None
+        hp = kwargs.get('hp', 100)
+        mass = kwargs.get('mass', 1.0)
+        
+        # If first positional arg is provided
+        if len(args) > 0:
+            # Check if it looks like an image (has get_texture method)
+            if hasattr(args[0], 'get_texture'):
+                image = args[0]
+            else:
+                # First arg might be hp
+                hp = args[0]
+                if len(args) > 1:
+                    mass = args[1]
+        
+        # If no image provided, create a default one
+        if image is None:
+            import pyglet
+            image = pyglet.image.SolidColorImagePattern((255, 0, 0, 255)).create_image(1, 1)
+        
         super(Entity, self).__init__(image)
+        
         # Thông số sinh tồn
-        self.hp = 100
+        self.hp = hp
+        self.mass = mass
         
         # Trạng thái vật lý
         self.velocity_x = 0

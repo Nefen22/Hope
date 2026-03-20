@@ -47,12 +47,32 @@ class AboutLayer(ColorLayer):
             )
             self.add(lbl)
 
+    def on_enter(self):
+        """Called when layer enters scene"""
+        try:
+            super().on_enter()
+            director.window.push_handlers(self)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+    
+    def on_exit(self):
+        """Called when layer exits scene"""
+        director.window.pop_handlers()
+        super().on_exit()
+
     def on_key_press(self, symbol, modifiers):
-        if symbol == pyglet.window.key.ESCAPE:
-            import cocos.director as cd
-            import pyglet
-            pyglet.clock.schedule_once(lambda dt: cd.director.pop(), 0.0)
-            return True
+        try:
+            if symbol == pyglet.window.key.ESCAPE:
+                director.pop()
+                return True
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+        return False
+    
+    def on_key_release(self, symbol, modifiers):
+        return False
 
 
 # ─── Màn Options ─────────────────────────────────────────────────────────────
@@ -62,6 +82,7 @@ class OptionsLayer(ColorLayer):
 
     def __init__(self):
         super().__init__(10, 30, 10, 230)
+        
         w, h = director.get_window_size()
 
         self._bgm_vol   = SoundManager.bgm_volume
@@ -70,21 +91,57 @@ class OptionsLayer(ColorLayer):
         self._lbl_title = Label("OPTIONS", font_name='Arial', font_size=28, bold=True,
                                 color=(255, 200, 50, 255),
                                 x=w // 2, y=h - 100, anchor_x='center')
+        
         self._lbl_bgm = Label(self._bgm_text(), font_name='Arial', font_size=18,
                               color=(200, 220, 255, 255),
                               x=w // 2, y=h - 200, anchor_x='center')
+        
         self._lbl_sfx = Label(self._sfx_text(), font_name='Arial', font_size=18,
                               color=(200, 220, 255, 255),
                               x=w // 2, y=h - 250, anchor_x='center')
+        
         self._lbl_hint = Label("↑↓ Select  ←→ Adjust  ESC Back",
                                font_name='Arial', font_size=13,
                                color=(150, 150, 180, 255),
                                x=w // 2, y=60, anchor_x='center')
+        
         for l in (self._lbl_title, self._lbl_bgm, self._lbl_sfx, self._lbl_hint):
             self.add(l)
 
         self._focus = 0   # 0=BGM, 1=SFX
         self._update_highlight()
+        
+        self._update_count = 0
+        
+    
+    def on_enter(self):
+        """Called when layer enters scene"""
+        try:
+            super().on_enter()
+            director.window.push_handlers(self)
+            
+            self.schedule(self._update_loop)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+    
+    def on_exit(self):
+        """Called when layer exits scene"""
+        try:
+            director.window.pop_handlers()
+            super().on_exit()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+    
+    def _update_loop(self, dt):
+        """Keep layer active - print counter every N frames"""
+        try:
+            self._update_count += 1
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
 
     def _bgm_text(self):
         return f"BGM Volume: {'█' * int(self._bgm_vol * 10):10s} {int(self._bgm_vol * 100)}%"
@@ -94,38 +151,71 @@ class OptionsLayer(ColorLayer):
 
     def _update_highlight(self):
         cols = [(255, 255, 80, 255), (200, 220, 255, 255)]
-        self._lbl_bgm.element.color = cols[0] if self._focus == 0 else cols[1]
-        self._lbl_sfx.element.color = cols[0] if self._focus == 1 else cols[1]
+        try:
+            self._lbl_bgm.color = cols[0] if self._focus == 0 else cols[1]
+            self._lbl_sfx.color = cols[0] if self._focus == 1 else cols[1]
+        except Exception as e:
+            print(f"[ERROR] Update highlight failed: {e}")
 
     def on_key_press(self, symbol, modifiers):
-        k = pyglet.window.key
-        if symbol == k.ESCAPE:
-            import cocos.director as cd
-            pyglet.clock.schedule_once(lambda dt: cd.director.pop(), 0.0)
-            return True
-        if symbol == k.UP:
-            self._focus = 0; self._update_highlight()
-        elif symbol == k.DOWN:
-            self._focus = 1; self._update_highlight()
-        elif symbol == k.RIGHT:
-            if self._focus == 0:
-                self._bgm_vol = min(1.0, self._bgm_vol + 0.1)
-                SoundManager.set_bgm_volume(self._bgm_vol)
-                self._lbl_bgm.element.text = self._bgm_text()
-            else:
-                self._sfx_vol = min(1.0, self._sfx_vol + 0.1)
-                SoundManager.sfx_volume = self._sfx_vol
-                self._lbl_sfx.element.text = self._sfx_text()
-        elif symbol == k.LEFT:
-            if self._focus == 0:
-                self._bgm_vol = max(0.0, self._bgm_vol - 0.1)
-                SoundManager.set_bgm_volume(self._bgm_vol)
-                self._lbl_bgm.element.text = self._bgm_text()
-            else:
-                self._sfx_vol = max(0.0, self._sfx_vol - 0.1)
-                SoundManager.sfx_volume = self._sfx_vol
-                self._lbl_sfx.element.text = self._sfx_text()
-        return True
+        try:
+            k = pyglet.window.key
+            if symbol == k.ESCAPE:
+                director.pop()
+                return True
+            try:
+                if symbol == k.UP:
+                    self._focus = 0
+                    self._update_highlight()
+                    return True
+                elif symbol == k.DOWN:
+                    self._focus = 1
+                    self._update_highlight()
+                    return True
+                elif symbol == k.RIGHT:
+                    if self._focus == 0:
+                        self._bgm_vol = min(1.0, self._bgm_vol + 0.1)
+                        SoundManager.set_bgm_volume(self._bgm_vol)
+                        try:
+                            self._lbl_bgm.element.text = self._bgm_text()
+                        except:
+                            pass
+                    else:
+                        self._sfx_vol = min(1.0, self._sfx_vol + 0.1)
+                        SoundManager.sfx_volume = self._sfx_vol
+                        try:
+                            self._lbl_sfx.element.text = self._sfx_text()
+                        except:
+                            pass
+                    return True
+                elif symbol == k.LEFT:
+                    if self._focus == 0:
+                        self._bgm_vol = max(0.0, self._bgm_vol - 0.1)
+                        SoundManager.set_bgm_volume(self._bgm_vol)
+                        try:
+                            self._lbl_bgm.element.text = self._bgm_text()
+                        except:
+                            pass
+                    else:
+                        self._sfx_vol = max(0.0, self._sfx_vol - 0.1)
+                        SoundManager.sfx_volume = self._sfx_vol
+                        try:
+                            self._lbl_sfx.element.text = self._sfx_text()
+                        except:
+                            pass
+                    return True
+            except Exception as e:
+                print(f"[ERROR] Key processing failed: {e}")
+                import traceback
+                traceback.print_exc()
+        except Exception as e:
+            print(f"[ERROR] on_key_press outer exception: {e}")
+            import traceback
+            traceback.print_exc()
+        return False
+    
+    def on_key_release(self, symbol, modifiers):
+        return False
 
 
 # ─── Background decorative layer cho menu ────────────────────────────────────
@@ -199,40 +289,58 @@ class MainMenu(cocos.menu.Menu):
         ]
 
     def on_new_game(self):
-        SoundManager.play_sfx('menu_select')
-        from game import create_game_scene
-        import cocos.director as cd
-        import pyglet
-        
-        def _start_game(dt):
-            try:
-                SoundManager.play_bgm('main')
-                cd.director.replace(create_game_scene())
-            except Exception as e:
-                import traceback
-                with open("crash.log", "w", encoding="utf-8") as f:
-                    f.write(str(e) + "\n")
-                    f.write(traceback.format_exc())
-                pyglet.app.exit()
-            
-        pyglet.clock.schedule_once(_start_game, 0.0)
+        try:
+            SoundManager.play_sfx('menu_select')
+        except Exception as e:
+            print(f"[ERROR] play_sfx failed: {e}")
+        try:
+            from game import create_game_scene
+            SoundManager.play_bgm('main')
+            director.replace(create_game_scene())
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            with open("crash.log", "w", encoding="utf-8") as f:
+                f.write(str(e) + "\n")
+                f.write(traceback.format_exc())
+            import pyglet
+            pyglet.app.exit()
 
     def on_options(self):
-        SoundManager.play_sfx('menu_select')
-        import cocos.director as cd
-        import pyglet
-        pyglet.clock.schedule_once(lambda dt: cd.director.push(Scene(OptionsLayer())), 0.0)
+        try:
+            SoundManager.play_sfx('menu_select')
+        except Exception as e:
+            print(f"[ERROR] play_sfx failed: {e}")
+        try:
+            layer = OptionsLayer()
+            scene = Scene(layer)
+            director.push(scene)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            with open("crash.log", "w", encoding="utf-8") as f:
+                f.write(str(e) + "\n")
+                f.write(traceback.format_exc())
 
     def on_about(self):
-        SoundManager.play_sfx('menu_select')
-        import cocos.director as cd
-        import pyglet
-        pyglet.clock.schedule_once(lambda dt: cd.director.push(Scene(AboutLayer())), 0.0)
+        try:
+            SoundManager.play_sfx('menu_select')
+        except Exception as e:
+            print(f"[ERROR] play_sfx failed: {e}")
+        try:
+            layer = AboutLayer()
+            scene = Scene(layer)
+            director.push(scene)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            with open("crash.log", "w", encoding="utf-8") as f:
+                f.write(str(e) + "\n")
+                f.write(traceback.format_exc())
 
     def on_exit(self):
         import pyglet
         pyglet.app.exit()
-
 
 # ─── Tạo Scene Menu ───────────────────────────────────────────────────────────
 
