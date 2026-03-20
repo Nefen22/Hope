@@ -63,6 +63,8 @@ isLoop = {
 }
 
 
+
+
 def load_animations(folder_path):
     animations = {}
 
