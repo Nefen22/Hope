@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 game.py – Game chính
 Tính năng:
@@ -16,7 +17,6 @@ from cocos.director import director
 from cocos.actions import (MoveTo, CallFunc, Delay, FadeIn, FadeOut)
 from cocos.actions import sequence as Sequence
 import cocos.rect
-
 from maps.map   import GameMapManager
 from entities.player import PlayerSprite
 from entities.enemy  import GoblinWarrior, GoblinGiant, spawn_enemy
@@ -127,14 +127,14 @@ class GameLayer(ScrollableLayer):
         # Puzzle
         self._switch_a = None
         self._switch_b = None
-        self._boss_door: BossDoor | None = None
+        self._boss_door= None
         self._puzzle_solved = False
 
         # Entity list
-        self.entities: list = []
+        self.entities = []
 
         # ── Player ────────────────────────────────────────────────────────────
-        self.player = PlayerSprite()
+        self.player = PlayerSprite(hp=100, mass=1.0)
         self.player.position = (100, ENTITY_STAND_Y)
         self.add(self.player, z=10)
         self.entities.append(self.player)

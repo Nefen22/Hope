@@ -14,8 +14,8 @@ class GameMapManager:
         self.tmx_path   = tmx_path
         self.tilemap    = load(tmx_path)
 
-        self.bg_layer    = self.tilemap['background']
-        self.walls_layer = self.tilemap['walls']
+        self.bg_layer    = self.tilemap['bg3']
+        self.walls_layer = self.tilemap['bg3']
 
         # Mặc định (override từ object layer bên dưới)
         self.boss_trigger_x      = 880 * TILE_H   # fallback

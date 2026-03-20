@@ -12,25 +12,24 @@ SFX_FILES = {
     'jump':         'jump.mp3',
     'attack':       'attack.mp3',
     'coin':         'coin.mp3',
-    'block_break':  'block_break.wav',
-    'enemy_hit':    'enemy_hit.wav',
-    'boss_hit':     'boss_hit.wav',
-    'player_hit':   'player_hit.wav',
     'menu_select':  'menu_select.mp3',
-    'boss_enter':   'boss_enter.wav',
     'victory':      'victory.mp3',
     'switch':       'switch.mp3',
-    'door_open':    'door_open.mp3',
 }
 
-BGM_FILE = 'bgm.mp3'      # nhạc nền chính, vòng lặp
-BOSS_BGM  = 'boss_bgm.mp3' # nhạc boss
+BGM_FILE = 'victory.mp3'      # nhạc nền chính, vòng lặp
+BOSS_BGM  = 'victory.mp3' # nhạc boss
 
 
 def _load_or_none(path):
+    """Load sound file, return None if file doesn't exist"""
     try:
+        if not os.path.exists(path):
+            print(f"[WARNING] Sound file not found: {path}")
+            return None
         return pyglet.media.load(path, streaming=False)
-    except Exception:
+    except Exception as e:
+        print(f"[WARNING] Failed to load sound {path}: {e}")
         return None
 
 
@@ -65,16 +64,11 @@ class SoundManager:
         
         cls._bgm_player = pyglet.media.Player()
         
-        # Hỗ trợ loop cho cả Pyglet 1.5 (SourceGroup) và 2.0+ (Player.loop)
         try:
             cls._bgm_player.loop = True
             cls._bgm_player.queue(source)
         except AttributeError:
-            # Pyglet 1.5: Sử dụng cơ chế đơn giản nhất cho StaticSource.
-            # Lưu ý: StaticSource trong Pyglet 1.5 không dễ lặp vô tận bằng queue.
-            # Giải pháp tạm thời: Phát một lần, hoặc queue nhiều lần.
             cls._bgm_player.queue(source)
-            # Thử set eos_action nếu version hỗ trợ
             if hasattr(cls._bgm_player, 'EOS_LOOP'):
                 cls._bgm_player.eos_action = cls._bgm_player.EOS_LOOP
 
