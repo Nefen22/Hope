@@ -26,22 +26,24 @@ class BossGoblin(Entity):
 
         super(BossGoblin, self).__init__(initial)
         self.position = (x, y)
-        self.scale = 1.2   # hơn enemy nhưng tương đương player
+        self.scale = 1.8
 
-        self.hp      = 4000
-        self.max_hp  = 4000
-        self.move_speed = 100
+        # Stats - 500 HP như yêu cầu (25-50 sword hits với random 10-20 dmg)
+        self.hp      = 500
+        self.max_hp  = 500
+        self.move_speed = 120
 
-        self.hitbox_w = 60
-        self.hitbox_h = 90
+        # Hitbox to hơn nhưng realistic
+        self.hitbox_w = 65
+        self.hitbox_h = 95
 
-        self.direction = -1
-        # BossGoblin mặc định nhìn TRÁI → giống goblin enemy
-        self.scale_x = abs(self.scale)
+        self.direction = -1  # -1 = left, 1 = right
+        # BossGoblin sprite faces RIGHT by default (same as normal goblins)
+        self.scale_x = -abs(self.scale)  # Flip when facing left initially
 
         self._state          = "idle"
         self._attack_timer   = 0.0
-        self._attack_cooldown = 2.0
+        self._attack_cooldown = 1.5  # Reduced for more aggressive boss
         self._is_attacking   = False
         self._is_dying       = False
         self._die_timer      = 0.0
@@ -77,25 +79,32 @@ class BossGoblin(Entity):
             if self._attack_timer >= 1.5:
                 self._is_attacking   = False
                 self._attack_timer   = 0.0
-                self._attack_cooldown = 1.8
+                self._attack_cooldown = 1.2  # Faster cooldown for aggressive boss
                 self._play("idle")
             self.update_physics(dt, walls_layer)
             return
 
-        dist    = player.x - self.x
+        # Calculate distance and direction to player
+        dist     = player.x - self.x
         abs_dist = abs(dist)
-
         self.direction = 1 if dist > 0 else -1
-        # Sprite nhìn TRÁI mặc định: đi phải(+1) = lật âm, đi trái(-1) = không lật
-        self.scale_x = -abs(self.scale) if self.direction == 1 else abs(self.scale)
 
-        if abs_dist < 90 and self._attack_cooldown <= 0:
+        # Flip sprite: Boss Goblin faces RIGHT by default (same as normal goblins)
+        #   Facing RIGHT (dir=1) → normal
+        #   Facing LEFT (dir=-1) → flip
+        if self.direction == 1:  # Facing right
+            self.scale_x = abs(self.scale)   # Normal
+        else:  # Facing left
+            self.scale_x = -abs(self.scale)  # Flip
+
+        # AI behavior based on distance
+        if abs_dist < 100 and self._attack_cooldown <= 0:
             self._is_attacking   = True
             self._attack_timer   = 0.0
-            self._attack_cooldown = 3.5
+            self._attack_cooldown = 2.5  # Prevent spam
             self._play("attack")
             self.velocity_x = 0
-        elif abs_dist > 70:
+        elif abs_dist > 80:
             self.velocity_x = self.move_speed * self.direction
             self._play("walk")
         else:
@@ -127,6 +136,7 @@ class BossMinotaur(Entity):
             "idle":   load_frames(os.path.join(root, "idle"), duration=0.075, loop=True),
             "walk":   load_frames(os.path.join(root, "walk"), duration=0.07,  loop=True),
             "attack": load_frames(os.path.join(root, "atk_1"), duration=0.06, loop=False),
+            "die":    load_frames(os.path.join(root, "die"), duration=0.10, loop=False),  # Added die animation
         }
 
         initial = self.animations["idle"] or \
@@ -134,22 +144,26 @@ class BossMinotaur(Entity):
 
         super(BossMinotaur, self).__init__(initial)
         self.position = (x, y)
-        self.scale = 1.1   # tương đương player, nhưng nhìn ngầu hơn
+        self.scale = 2.0  # Larger than Goblin Boss - final boss presence
 
-        self.hp      = 5000
-        self.max_hp  = 5000
-        self.move_speed = 90
+        # Final boss - 700 HP (harder than Goblin Boss)
+        self.hp      = 700
+        self.max_hp  = 700
+        self.move_speed = 110
 
-        self.hitbox_w = 60
-        self.hitbox_h = 88
+        # Hitbox to nhất nhưng realistic
+        self.hitbox_w = 70
+        self.hitbox_h = 100
 
-        self.direction = -1
-        self.scale_x = -abs(self.scale)
+        self.direction = 1  # Minotaur faces RIGHT by default (different from goblins)
+        self.scale_x = abs(self.scale)  # Normal when facing right
 
         self._state           = "idle"
         self._attack_timer    = 0.0
-        self._attack_cooldown = 2.0
+        self._attack_cooldown = 1.5  # Aggressive final boss
         self._is_attacking    = False
+        self._is_dying        = False
+        self._die_timer       = 0.0
         self.is_dead          = False
         self._killed          = False
 
@@ -165,6 +179,12 @@ class BossMinotaur(Entity):
         if self.is_dead:
             return
 
+        if self._is_dying:
+            self._die_timer += dt
+            if self._die_timer >= 1.5:  # Longer death animation for final boss
+                self.is_dead = True
+            return
+
         if self._attack_cooldown > 0:
             self._attack_cooldown -= dt
 
@@ -175,25 +195,32 @@ class BossMinotaur(Entity):
             if self._attack_timer >= 1.0:
                 self._is_attacking    = False
                 self._attack_timer    = 0.0
-                self._attack_cooldown = 1.8
+                self._attack_cooldown = 1.2  # Fast cooldown for challenge
                 self._play("idle")
             self.update_physics(dt, walls_layer)
             return
 
+        # Calculate distance and direction to player
         dist     = player.x - self.x
         abs_dist = abs(dist)
-
         self.direction = 1 if dist > 0 else -1
-        # Minotaur nhìn PHẢI mặc định: đi phải(+1) = không lật, đi trái(-1) = lật
-        self.scale_x = abs(self.scale) if self.direction == 1 else -abs(self.scale)
 
-        if abs_dist < 90 and self._attack_cooldown <= 0:
+        # Flip sprite: Minotaur faces RIGHT by default (opposite of goblins)
+        #   Facing RIGHT (dir=1) → normal
+        #   Facing LEFT (dir=-1) → flip
+        if self.direction == 1:  # Facing right
+            self.scale_x = abs(self.scale)   # Normal
+        else:  # Facing left
+            self.scale_x = -abs(self.scale)  # Flip
+
+        # AI behavior - more aggressive than Goblin Boss
+        if abs_dist < 100 and self._attack_cooldown <= 0:
             self._is_attacking    = True
             self._attack_timer    = 0.0
-            self._attack_cooldown = 3.0
+            self._attack_cooldown = 2.0
             self._play("attack")
             self.velocity_x = 0
-        elif abs_dist > 70:
+        elif abs_dist > 80:
             self.velocity_x = self.move_speed * self.direction
             self._play("walk")
         else:
@@ -203,18 +230,17 @@ class BossMinotaur(Entity):
         self.update_physics(dt, walls_layer)
 
     def take_damage(self, amount):
-        if self.is_dead:
+        if self.is_dead or self._is_dying:
             return
         self.hp -= amount
         if self.hp <= 0:
             self.hp = 0
-            self.is_dead = True
-            if not self._killed:
-                self._killed = True
-                try:
-                    self.kill()
-                except Exception:
-                    pass
+            self._is_dying = True
+            self._die_timer = 0.0
+            if self.animations.get("die"):
+                self._play("die")
+            # Don't kill immediately - let die animation play
+            # Game will detect is_dead after animation completes
 
 
 # Backward-compat alias (game.py imports "Boss")

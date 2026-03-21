@@ -7,7 +7,7 @@ from .entity import Entity
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_PATH = os.path.join(BASE_DIR, "assets", "images", "player")
-ANIM_SCALE = 0.08
+ANIM_SCALE = 0.09  # Speed up animation slightly
 LOCK_ACTION = [key.X, key.C, key.Z]
 
 # Khai báo vòng lặp animation
@@ -22,71 +22,70 @@ isLoop = {
     "TurnAround": False, "WallClimb": True, "WallClimbNoMovement": True, "WallHang": True, "WallSlide": True,
 }
 
-def auto_crop_image(image):
-    image_data = image.get_image_data()
-    raw = image_data.get_data('RGBA', image.width * 4)
-
-    width = image.width
-    height = image.height
-
-    min_x = width
-    max_x = 0
-    min_y = height
-    max_y = 0
-
-    for y in range(height):
-        for x in range(width):
-            index = (y * width + x) * 4
-            alpha = raw[index + 3]
-
-            if alpha > 10:  # pixel không trong suốt
-                min_x = min(min_x, x)
-                max_x = max(max_x, x)
-                min_y = min(min_y, y)
-                max_y = max(max_y, y)
-
-    if min_x > max_x or min_y > max_y:
-        return image  # ảnh rỗng
-
-    cropped = image.get_region(
-        x=min_x, y=min_y, width=max_x - min_x, height=max_y - min_y
-    )
-    return cropped
+# Width cho từng animation để crop chính xác (mượt hơn auto-crop)
+animWidth = {
+    "Run": 40, "Roll": 40, "Idle": 40,
+    "Attack": 80, "Attack2": 80, "AttackNoMovement": 80,
+    "Attack2NoMovement": 80, "AttackCombo": 80, "AttackComboNoMovement": 80,
+    "Crouch": 40, "CrouchAttack": 80, "CrouchFull": 40, "CrouchTransition": 40, "CrouchWalk": 40,
+    "Dash": 40, "Death": 40, "DeathNoMovement": 40, "Fall": 40,
+    "Hit": 40, "Jump": 40, "JumpFallInbetween": 40,
+    "Slide": 40, "SlideFull": 40, "SlideTransitionStart": 40, "SlideTransitionEnd": 40,
+    "TurnAround": 40, "WallClimb": 40, "WallClimbNoMovement": 40, "WallHang": 40, "WallSlide": 40,
+}
 
 def load_animations(folder_path):
+    """Load animations with fixed offset and width (smoother than auto-crop)"""
     animations = {}
     for filename in os.listdir(folder_path):
-        if not filename.endswith(".png"): continue
+        if not filename.endswith(".png"):
+            continue
         name = os.path.splitext(filename.replace("_", ""))[0]
         full_path = os.path.join(folder_path, filename)
         image = pyglet.image.load(full_path)
 
-        frame_block = 120
+        frame_block = 120  # Each frame is 120px wide in sprite sheet
         frame_count = image.width // 120
 
-        frames = [
-            auto_crop_image(image.get_region(x=i * frame_block, y=0, width=120, height=80))
-            for i in range(frame_count)
-        ]
-        animation = pyglet.image.Animation.from_image_sequence(frames, ANIM_SCALE, isLoop.get(name, True))
+        # Get width for this animation (default to 40 if not specified)
+        width = animWidth.get(name, 40)
+
+        # Crop frames with fixed offset (40px from left) and custom width
+        frames = []
+        for i in range(frame_count):
+            frame_img = image.get_region(
+                x=i * frame_block + 40,  # Fixed offset for cleaner crop
+                y=0,
+                width=width,
+                height=80
+            )
+            # Set anchor to bottom-center so player stands on ground properly
+            frame_img.anchor_x = width // 2
+            frame_img.anchor_y = 0  # Bottom anchor for ground alignment
+            frames.append(frame_img)
+
+        animation = pyglet.image.Animation.from_image_sequence(
+            frames, ANIM_SCALE, isLoop.get(name, True)
+        )
         animations[name] = animation
 
     return animations
 
 class PlayerSprite(Entity):
     is_event_handler = True
-    
+
     def __init__(self, hp=100, mass=0):
-        # Thiết lập tạm thời animation đầu tiên
+        # Thiết lập animations
         self.animations = load_animations(ASSET_PATH)
         super(PlayerSprite, self).__init__(self.animations["Idle"])
-        
+
         self.hp = hp
         self.mass = mass
         self.scale = 1.5
-        
-        self.hitbox_w = 40
-        self.hitbox_h = 60
+
+        # Hitbox nhỏ gọn, đứng đúng mặt đất
+        self.hitbox_w = 30
+        self.hitbox_h = 50
         self.locktimer = 0
         self.isGoingtoRight = True
         
@@ -151,9 +150,9 @@ class PlayerSprite(Entity):
             
             # Gắn hitbox kiếm ở đằng trước nhân vật
             import cocos.rect
-            at_w = 40
-            at_h = 60
-            offset_x = 40 if self.isGoingtoRight else -40
+            at_w = 50  # Wider attack range for better feel
+            at_h = 55
+            offset_x = 45 if self.isGoingtoRight else -45
             self.attack_rect = cocos.rect.Rect(self.x + offset_x - at_w/2, self.y - at_h/2, at_w, at_h)
             
             return True

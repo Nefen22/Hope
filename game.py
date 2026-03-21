@@ -21,7 +21,7 @@ PHASE_BOSS2       = "boss2"       # Đánh Boss Minotaur
 PHASE_VICTORY     = "victory"     # Game cleared
 
 TRANSITION_DURATION  = 3.0   # Thời gian hiển thị thông điệp chuyển màn
-MINOTAUR_SPAWN_DELAY = 6.0   # Sau bao lâu kể từ khi Goblin Boss chết thì spawn Minotaur
+MINOTAUR_SPAWN_DELAY = 4.0   # Sau bao lâu kể từ khi Goblin Boss chết thì spawn Minotaur
 
 
 class GameLayer(ScrollableLayer):
@@ -72,13 +72,15 @@ class GameLayer(ScrollableLayer):
 
     def _spawn_starter_content(self):
         """Fixed enemies/items/blocks near start."""
-        # One warrior + a coin on starter platform area
-        w = GoblinWarrior(600, 300, walk_range=200)
+        # One warrior on starter platform area
+        w = GoblinWarrior(600, 300, walk_range=250)
         self._add_entity(w)
 
+        # Starting coins for player to collect
         for item_x in [300, 500, 800]:
             self._add_entity(Item(item_x, 300, "Coin"), z=8)
 
+        # Tutorial blocks
         self._add_entity(Block(400, 420, item_type="Invincible"), z=8)
         self._add_entity(Block(450, 420, item_type="Coin"), z=8)
 
@@ -86,24 +88,27 @@ class GameLayer(ScrollableLayer):
         """Procedurally populate the entire path up to the boss room."""
         boss_dist   = self.map_manager.boss_trigger_x
         spawn_start = 800
-        step        = 480
+        step        = 500  # Increased spacing for better pacing
 
-        for x in range(spawn_start, int(boss_dist) - 300, step):
-            # 1–3 enemies at staggered sub-positions
-            for _ in range(random.randint(1, 3)):
-                ex = x + random.randint(0, step - 80)
-                self._add_entity(spawn_enemy(ex, 300, walk_range=160))
+        for x in range(spawn_start, int(boss_dist) - 400, step):
+            # 2-4 enemies at staggered sub-positions for variety
+            num_enemies = random.randint(2, 4)
+            for _ in range(num_enemies):
+                ex = x + random.randint(0, step - 100)
+                self._add_entity(spawn_enemy(ex, 300, walk_range=200))
 
-            # 2–4 coins + occasional Invincible
-            for _ in range(random.randint(2, 4)):
-                ix = x + random.randint(20, step - 20)
-                itype = random.choice(["Coin", "Coin", "Coin", "Invincible"])
+            # 3-5 coins + occasional Invincible
+            num_items = random.randint(3, 5)
+            for _ in range(num_items):
+                ix = x + random.randint(30, step - 30)
+                itype = random.choice(["Coin", "Coin", "Coin", "Coin", "Invincible"])
                 self._add_entity(Item(ix, 300, itype), z=8)
 
-            # 1–2 breakable blocks
-            for _ in range(random.randint(1, 2)):
-                bx = x + random.randint(40, step - 40)
-                btype = random.choice(["Coin", "Invincible"])
+            # 1-3 breakable blocks
+            num_blocks = random.randint(1, 3)
+            for _ in range(num_blocks):
+                bx = x + random.randint(50, step - 50)
+                btype = random.choice(["Coin", "Coin", "Invincible"])
                 self._add_entity(Block(bx, 420, item_type=btype), z=8)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -162,22 +167,26 @@ class GameLayer(ScrollableLayer):
                         self.spawn_item(entity.x, entity.y + 32, drop)
                         self.player.velocity_y = -100
 
-            # ── Enemy collision ────────────────────────────────────────────────
+            # ── Enemy collision ────────────────────────────────────────────
             if isinstance(entity, (GoblinWarrior, GoblinGiant)) and not entity.is_dead:
                 enemy_rect = entity.get_logical_rect()
 
                 if attack_rect and attack_rect.intersects(enemy_rect):
-                    entity.take_damage(50)
+                    # Random damage 10-20 per sword hit
+                    damage = random.randint(10, 20)
+                    entity.take_damage(damage)
 
                 elif player_rect.intersects(enemy_rect):
+                    # Stomp mechanic - jumping on enemy's head
                     if (player_rect.bottom >= enemy_rect.top - 10
                             and self.player.velocity_y < 0):
                         entity.take_damage(entity.hp)  # instant kill on head-stomp
-                        self.player.velocity_y = 300
+                        self.player.velocity_y = 300   # bounce player up
                         self.items_collected += entity.coin_drop
                         self.hud.update_score(self.items_collected)
                     else:
-                        dmg = 10 if isinstance(entity, GoblinWarrior) else 20
+                        # Touch damage from enemies
+                        dmg = 15 if isinstance(entity, GoblinWarrior) else 25  # Balanced damage
                         if self.player.take_damage(dmg):
                             self.hud.update_hp(self.player.hp)
 

@@ -17,7 +17,7 @@ def _sort_key(filename):
         return 0
 
 def load_frames(folder_path, duration=0.08, loop=True):
-    """Load all PNGs in a folder as a pyglet Animation."""
+    """Load all PNGs in a folder as a pyglet Animation with anchor set."""
     if not os.path.exists(folder_path):
         return None
     files = sorted(
@@ -29,6 +29,9 @@ def load_frames(folder_path, duration=0.08, loop=True):
     frames = []
     for f in files:
         img = pyglet.image.load(os.path.join(folder_path, f))
+        # Set anchor to bottom-center so sprites stand on ground properly
+        img.anchor_x = img.width // 2
+        img.anchor_y = 0  # Bottom anchor for ground alignment
         frames.append(pyglet.image.AnimationFrame(img, duration))
     if not loop:
         frames[-1].duration = None
@@ -39,7 +42,7 @@ def load_frames(folder_path, duration=0.08, loop=True):
 class GoblinWarrior(Entity):
     KIND = "warrior"
 
-    def __init__(self, x, y, walk_range=180):
+    def __init__(self, x, y, walk_range=250):  # Increased walk range
         root = os.path.join(BASE_DIR, "assets", "images", "enemy", "goblin warrior")
 
         self.anim_idle   = load_frames(os.path.join(root, "idle"),    duration=0.08,  loop=True)
@@ -52,17 +55,17 @@ class GoblinWarrior(Entity):
 
         super(GoblinWarrior, self).__init__(initial)
         self.position   = (x, y)
-        self.scale      = 0.9   # nhỏ hơn player (1.5)
+        self.scale      = 1.0
 
-        # Stats
-        self.hp         = 80
-        self.move_speed = 110
-        self.coin_drop  = 2
+        # Stats - 50 HP như yêu cầu
+        self.hp         = 50
+        self.move_speed = 120
+        self.coin_drop  = 3
         self.is_dead    = False
 
-        # Hitbox
-        self.hitbox_w = 30
-        self.hitbox_h = 50
+        # Hitbox nhỏ gọn
+        self.hitbox_w = 28
+        self.hitbox_h = 45
 
         # Patrol
         self.start_x    = x
@@ -102,26 +105,31 @@ class GoblinWarrior(Entity):
                     pass
             return
 
-        # 1. Tính toán hướng dựa trên phạm vi tuần tra
+        # Update patrol direction based on walk range
         if self.x > self.start_x + self.walk_range:
-            self.direction = -1 # Quay sang trái
+            self.direction = -1  # Turn left
         elif self.x < self.start_x - self.walk_range:
-            self.direction = 1  # Quay sang phải
+            self.direction = 1   # Turn right
 
-        # 2. Đồng nhất vận tốc: direction dương thì velocity dương
+        # Update velocity based on direction
         self.velocity_x = self.move_speed * self.direction
-        # Sprite mặc định nhìn sang TRÁI → direction=1 (đi phải) cần lật = scale_x âm
-        # direction=-1 (đi trái) = scale_x dương (không lật)
-        self.scale_x = -abs(self.scale) if self.direction == 1 else abs(self.scale)
+
+        # Flip sprite: Goblin sprite faces RIGHT by default
+        #   Moving RIGHT (dir=1) → normal (scale_x positive)
+        #   Moving LEFT (dir=-1) → flip (scale_x negative)
+        if self.direction == 1:  # Moving right
+            self.scale_x = abs(self.scale)   # Normal orientation
+        else:  # Moving left (direction == -1)
+            self.scale_x = -abs(self.scale)  # Flip horizontally
 
         self._play("walk")
         old_x = self.x
         self.update_physics(dt, walls_layer)
 
-        # 4. Xử lý va chạm tường: Nếu không di chuyển được thì đổi hướng ngay
+        # Handle wall collision: if can't move, reverse direction
         if abs(self.x - old_x) < 0.1 and self.velocity_x != 0:
             self.direction *= -1
-            self.start_x = self.x # Reset mốc tuần tra tại điểm va chạm
+            self.start_x = self.x  # Reset patrol anchor at collision point
 
     def take_damage(self, amount):
         if self.is_dead:
@@ -136,7 +144,7 @@ class GoblinWarrior(Entity):
 class GoblinGiant(Entity):
     KIND = "giant"
 
-    def __init__(self, x, y, walk_range=150):
+    def __init__(self, x, y, walk_range=250):  # Increased walk range
         root = os.path.join(BASE_DIR, "assets", "images", "enemy", "goblin giant")
 
         self.anim_idle  = load_frames(os.path.join(root, "idle"),  duration=0.09,  loop=True)
@@ -149,17 +157,17 @@ class GoblinGiant(Entity):
 
         super(GoblinGiant, self).__init__(initial)
         self.position   = (x, y)
-        self.scale      = 1.2   # to hơn warrior nhưng không quá lớn so với player
+        self.scale      = 1.3
 
-        # Stats (tougher than warrior)
-        self.hp         = 200
-        self.move_speed = 75
-        self.coin_drop  = 5
+        # Stats - 100 HP như yêu cầu (mini-boss)
+        self.hp         = 100
+        self.move_speed = 80
+        self.coin_drop  = 8
         self.is_dead    = False
 
-        # Hitbox
-        self.hitbox_w = 44
-        self.hitbox_h = 65
+        # Hitbox lớn hơn warrior
+        self.hitbox_w = 42
+        self.hitbox_h = 62
 
         # Patrol
         self.start_x    = x
@@ -198,18 +206,26 @@ class GoblinGiant(Entity):
                     pass
             return
 
+        # Update patrol direction based on walk range
         if self.x > self.start_x + self.walk_range:
-            self.direction = -1
+            self.direction = -1  # Turn left
         elif self.x < self.start_x - self.walk_range:
-            self.direction = 1
+            self.direction = 1   # Turn right
 
+        # Update velocity based on direction
         self.velocity_x = self.move_speed * self.direction
-        self.scale_x = -abs(self.scale) if self.direction == 1 else abs(self.scale)
+
+        # Flip sprite: Goblin Giant faces RIGHT by default (same as warrior)
+        if self.direction == 1:  # Moving right
+            self.scale_x = abs(self.scale)   # Normal orientation
+        else:  # Moving left
+            self.scale_x = -abs(self.scale)  # Flip horizontally
 
         self._play("walk")
         old_x = self.x
         self.update_physics(dt, walls_layer)
 
+        # Handle wall collision
         if abs(self.x - old_x) < 0.1 and self.velocity_x != 0:
             self.direction *= -1
             self.start_x = self.x
@@ -224,7 +240,7 @@ class GoblinGiant(Entity):
 
 # ─── Factory (70 / 30) ───────────────────────────────────────────────────────
 
-def spawn_enemy(x, y, walk_range=180):
+def spawn_enemy(x, y, walk_range=250):
     """70% Goblin Warrior, 30% Goblin Giant."""
     if random.random() < 0.70:
         return GoblinWarrior(x, y, walk_range=walk_range)
