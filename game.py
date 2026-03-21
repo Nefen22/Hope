@@ -44,7 +44,7 @@ class GameLayer(ScrollableLayer):
 
         # ── Player ────────────────────────────────────────────────────────────
         self.player = PlayerSprite()
-        self.player.position = (100, 300)
+        self.player.position = (42 * 16, 50 * 16)
         self.add(self.player, z=10)
         self.entities.append(self.player)
 
@@ -287,7 +287,7 @@ def main():
     director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
 
     hud_layer = HUD()
-    map_mgr   = GameMapManager("assets/map.tmx")
+    map_mgr   = GameMapManager("assets/map21.tmx")
     scroller  = map_mgr.get_scrolling_manager()
 
     game_layer = GameLayer(map_mgr, hud_layer)

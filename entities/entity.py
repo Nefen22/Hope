@@ -98,3 +98,4 @@ class Entity(Sprite):
                 
         # Áp dụng toạ độ mới cuối cùng
         self.position = (self.x + dx, self.y + dy)
+        print(self.position)
