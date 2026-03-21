@@ -208,7 +208,7 @@ class BossMinotaur(Entity):
         # Flip sprite: Minotaur faces RIGHT by default (opposite of goblins)
         #   Facing RIGHT (dir=1) → normal
         #   Facing LEFT (dir=-1) → flip
-        if self.direction == 1:  # Facing right
+        if self.direction == -1:  # Facing right
             self.scale_x = abs(self.scale)   # Normal
         else:  # Facing left
             self.scale_x = -abs(self.scale)  # Flip

@@ -17,7 +17,7 @@ class Entity(Sprite):
         # Hằng số vật lý mặc định (có thể ghi đè ở class con)
         self.gravity = -500
         self.move_speed = 200
-        self.jump_speed = 300
+        self.jump_speed = 500
         
     def get_logical_rect(self):
         """Trả về bounding box cố định nếu có thiết lập, tránh rung lắc hitbox do crop ảnh."""
@@ -58,7 +58,10 @@ class Entity(Sprite):
             tiles_x = walls_layer.get_in_region(new_rect_x.left + epsilon, new_rect_x.bottom + epsilon, new_rect_x.right - epsilon, new_rect_x.top - epsilon)
             collide_x = False
             for cell in tiles_x:
-                if cell.tile and cell.tile.properties.get('solid'):
+                tile = getattr(cell, 'tile', None)
+                tile_props = getattr(tile, 'properties', {}) if tile else {}
+                is_solid = bool(tile) and tile_props.get('solid', True)
+                if is_solid:
                     collide_x = True
                     if dx > 0:
                         self.x = cell.left - last_rect.width / 2
@@ -82,7 +85,10 @@ class Entity(Sprite):
             epsilon = 0.1
             tiles_y = walls_layer.get_in_region(new_rect_y.left + epsilon, new_rect_y.bottom + epsilon, new_rect_y.right - epsilon, new_rect_y.top - epsilon)
             for cell in tiles_y:
-                if cell.tile and cell.tile.properties.get('solid'):
+                tile = getattr(cell, 'tile', None)
+                tile_props = getattr(tile, 'properties', {}) if tile else {}
+                is_solid = bool(tile) and tile_props.get('solid', True)
+                if is_solid:
                     collide_y = True
                     if self.velocity_y < 0:
                         floor_hit = True 
@@ -98,4 +104,3 @@ class Entity(Sprite):
                 
         # Áp dụng toạ độ mới cuối cùng
         self.position = (self.x + dx, self.y + dy)
-        print(self.position)

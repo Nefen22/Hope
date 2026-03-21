@@ -97,6 +97,13 @@ class PlayerSprite(Entity):
         self.invincible_timer = 0
         self.is_attacking = False
         self.attack_rect = None # Vùng chém kiếm
+        self.input_locked = False
+
+    def set_input_locked(self, locked):
+        self.input_locked = bool(locked)
+        if self.input_locked:
+            self.keys.clear()
+            self.velocity_x = 0
         
     def play(self, state):
         if self.current_state != state:
@@ -104,6 +111,8 @@ class PlayerSprite(Entity):
             self.image = self.animations[state]
 
     def on_key_press(self, symbol, modifiers):
+        if self.input_locked:
+            return
         self.keys.add(symbol)
         
         # Nhảy
@@ -113,6 +122,8 @@ class PlayerSprite(Entity):
             self.on_ground = False
 
     def on_key_release(self, symbol, modifiers):
+        if self.input_locked:
+            return
         if symbol in self.keys:
             self.keys.remove(symbol)
             
@@ -176,6 +187,15 @@ class PlayerSprite(Entity):
                 self.is_invincible = False
                 self.opacity = 255
                 
+        if self.input_locked:
+            self.velocity_x = 0
+            self.is_attacking = False
+            self.attack_rect = None
+            if self.on_ground:
+                self.play("Idle")
+            self.update_physics(dt, walls_layer)
+            return
+
         # 1. KIỂM TRA ACTION KHOÁ (Tấn công, Dash...)
         if self.lock_action(dt):
             # Vẫn gọi update_physics để bị rớt tự do khi đang đánh trên không
