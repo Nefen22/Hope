@@ -5,7 +5,8 @@
     ],
     "fileStates": {
         "": {
-            "scaleInDock": 0.33
+            "scaleInDock": 0.33,
+            "scaleInEditor": 0.33
         },
         "#Tiles": {
             "scaleInEditor": 1
@@ -15,19 +16,21 @@
             "scaleInEditor": 8
         },
         "map21.tmx": {
-            "scale": 0.33,
-            "selectedLayer": 2,
+            "scale": 0.25,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 2457.575757575758,
-                "y": 189.3939393939395
+                "x": 1164,
+                "y": -258
             }
         },
         "map21.tmx#Background_1": {
             "dynamicWrapping": false,
+            "scaleInDock": 0.25,
             "scaleInEditor": 1
         },
         "map21.tmx#Salt": {
-            "dynamicWrapping": false
+            "dynamicWrapping": false,
+            "scaleInDock": 1
         },
         "map21.tmx#Tiles": {
             "dynamicWrapping": false,
@@ -37,7 +40,8 @@
             "dynamicWrapping": true
         },
         "map21.tmx#g": {
-            "dynamicWrapping": true
+            "dynamicWrapping": true,
+            "scaleInDock": 0.25
         },
         "map21.tmx#h": {
             "dynamicWrapping": true

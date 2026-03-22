@@ -21,7 +21,7 @@ class GameMapManager:
         self.boss_room_center_x = int(self.map_pixel_width * 0.86)
 
 
-        self.scroller.add
+        # self.scroller.add
 
         for idx, (name, layer) in enumerate(self.tilemap.find(RectMapLayer)):
             lname = (name or "").lower()
