@@ -111,9 +111,8 @@ class GameLayer(ScrollableLayer):
 
 
 
-        self.map_manager  = map_manager
-
-        self.walls_layer  = map_manager.get_walls_layer()
+        self.map_manager = map_manager
+        self.hitboxes  = map_manager.hitboxes
 
         self.hud          = hud
 
@@ -617,11 +616,11 @@ class GameLayer(ScrollableLayer):
 
             if isinstance(entity, (BossGoblin, BossMinotaur)):
 
-                entity.update(dt, self.walls_layer, self.player)
+                entity.update(dt, self.hitboxes, self.player)
 
             elif isinstance(entity, (GoblinWarrior, GoblinGiant)):
                 # Truyền player để enemy có thể tấn công
-                entity.update(dt, self.walls_layer, self.player)
+                entity.update(dt, self.hitboxes, self.player)
 
             elif isinstance(entity, Item):
                 # Bob animation
@@ -629,7 +628,7 @@ class GameLayer(ScrollableLayer):
 
             elif isinstance(entity, PlayerSprite):
 
-                entity.update(dt, self.walls_layer)
+                entity.update(dt, self.hitboxes)
 
 
 
