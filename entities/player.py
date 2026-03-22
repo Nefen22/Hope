@@ -74,7 +74,7 @@ def load_animations(folder_path):
 class PlayerSprite(Entity):
     is_event_handler = True
 
-    def __init__(self, hp=100, mass=0):
+    def __init__(self, hp=200, mass=0):
         # Thiết lập animations
         self.animations = load_animations(ASSET_PATH)
         super(PlayerSprite, self).__init__(self.animations["Idle"])

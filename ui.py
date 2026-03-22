@@ -24,7 +24,7 @@ class HUD(Layer):
 
         # ── Player HP ──────────────────────────────────────────────────────
         self.hp_label = Label(
-            "HP: 100",
+            "HP: 200",
             font_name='Arial', font_size=16, bold=True,
             color=(255, 80, 80, 255),
             x=20, y=h - 30

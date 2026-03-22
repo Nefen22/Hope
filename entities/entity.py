@@ -6,7 +6,7 @@ class Entity(Sprite):
     def __init__(self, image):
         super(Entity, self).__init__(image)
         # Thông số sinh tồn
-        self.hp = 100
+        self.hp = 500
         
         # Trạng thái vật lý
         self.velocity_x = 0
@@ -17,7 +17,7 @@ class Entity(Sprite):
         # Hằng số vật lý mặc định (có thể ghi đè ở class con)
         self.gravity = -500
         self.move_speed = 200
-        self.jump_speed = 500
+        self.jump_speed = 400
         
     def get_logical_rect(self):
         """Trả về bounding box cố định nếu có thiết lập, tránh rung lắc hitbox do crop ảnh."""
@@ -37,7 +37,7 @@ class Entity(Sprite):
         top = max(r.bottom, r.top)
         return type(r)(left, bottom, right - left, top - bottom)
     
-    def update_physics(self, dt, walls_layer):
+    def update_physics(self, dt, hitboxes):
         """Xử lý di chuyển, trọng lực và chống va chạm gạch cơ bản"""
         # Áp dụng trọng lực thay đổi vận tốc trục Y
         self.velocity_y += self.gravity * dt
@@ -52,27 +52,32 @@ class Entity(Sprite):
         new_rect_x = last_rect.copy()
         new_rect_x.x += dx
         
-        # Bắt va chạm tường bằng `get_in_region`
-        if walls_layer:
-            epsilon = 0.1
-            tiles_x = walls_layer.get_in_region(new_rect_x.left + epsilon, new_rect_x.bottom + epsilon, new_rect_x.right - epsilon, new_rect_x.top - epsilon)
-            collide_x = False
-            for cell in tiles_x:
-                tile = getattr(cell, 'tile', None)
-                tile_props = getattr(tile, 'properties', {}) if tile else {}
-                is_solid = bool(tile) and tile_props.get('solid', True)
-                if is_solid:
+        collide_x = False
+        import cocos.rect
+        if hitboxes:
+            for obj in hitboxes:
+                obj_name = (getattr(obj, "name", "") or "").lower()
+                if obj_name == "boss_trigger":
+                    continue
+                # cocos object layers usually have x, y at bottom-left if parsed by cocos
+                obj_w = getattr(obj, "width", 0)
+                obj_h = getattr(obj, "height", 0)
+                if obj_w == 0 or obj_h == 0:
+                    continue
+                obj_rect = cocos.rect.Rect(obj.x, obj.y, obj_w, obj_h)
+                
+                if new_rect_x.intersects(obj_rect):
                     collide_x = True
                     if dx > 0:
-                        self.x = cell.left - last_rect.width / 2
+                        self.x = obj_rect.left - last_rect.width / 2
                     elif dx < 0:
-                        self.x = cell.right + last_rect.width / 2
+                        self.x = obj_rect.right + last_rect.width / 2
                     break
                     
-            if collide_x:
-                self.velocity_x = 0
-                dx = 0
-                
+        if collide_x:
+            self.velocity_x = 0
+            dx = 0
+            
         # KIỂM TRA VA CHẠM TRỤC Y
         new_rect_y = self.get_logical_rect().copy()
         new_rect_y.x += dx 
@@ -81,17 +86,26 @@ class Entity(Sprite):
         collide_y = False
         floor_hit = False
         
-        if walls_layer:
-            epsilon = 0.1
-            tiles_y = walls_layer.get_in_region(new_rect_y.left + epsilon, new_rect_y.bottom + epsilon, new_rect_y.right - epsilon, new_rect_y.top - epsilon)
-            for cell in tiles_y:
-                tile = getattr(cell, 'tile', None)
-                tile_props = getattr(tile, 'properties', {}) if tile else {}
-                is_solid = bool(tile) and tile_props.get('solid', True)
-                if is_solid:
+        if hitboxes:
+            for obj in hitboxes:
+                obj_name = (getattr(obj, "name", "") or "").lower()
+                if obj_name == "boss_trigger":
+                    continue
+                obj_w = getattr(obj, "width", 0)
+                obj_h = getattr(obj, "height", 0)
+                if obj_w == 0 or obj_h == 0:
+                    continue
+                obj_rect = cocos.rect.Rect(obj.x, obj.y, obj_w, obj_h)
+                
+                if new_rect_y.intersects(obj_rect):
                     collide_y = True
                     if self.velocity_y < 0:
                         floor_hit = True 
+                        # Nếu rớt xuống trúng mặt đất, y dời lên
+                        self.y = obj_rect.top + new_rect_y.height / 2
+                    elif self.velocity_y > 0:
+                        # Đụng đầu trần nhà
+                        self.y = obj_rect.bottom - new_rect_y.height / 2
                     break
             
         self.on_ground = False
