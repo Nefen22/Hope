@@ -154,7 +154,8 @@ class GameLayer(ScrollableLayer):
         self.hud.show_endgame("END GAME", reason, on_restart=self.restart_game)
 
     def restart_game(self):
-        director.replace(build_game_scene())
+        from menus.main_menu import MainMenu
+        director.replace(MainMenu.get_scene())
 
     # ──────────────────────────────────────────────────────────────────────────
     def check_collisions(self):
@@ -341,7 +342,8 @@ def build_game_scene(map_path=TRAVEL_MAP_PATH, mode="travel", player_hp=100, sco
 def main():
     director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
 
-    director.run(build_game_scene())
+    from menus.main_menu import MainMenu
+    director.run(MainMenu.get_scene())
 
 
 if __name__ == '__main__':
