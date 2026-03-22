@@ -6,7 +6,7 @@ class Entity(Sprite):
     def __init__(self, image):
         super(Entity, self).__init__(image)
         # Thông số sinh tồn
-        self.hp = 100
+        self.hp = 500
         
         # Trạng thái vật lý
         self.velocity_x = 0
@@ -17,7 +17,7 @@ class Entity(Sprite):
         # Hằng số vật lý mặc định (có thể ghi đè ở class con)
         self.gravity = -500
         self.move_speed = 200
-        self.jump_speed = 500
+        self.jump_speed = 400
         
     def get_logical_rect(self):
         """Trả về bounding box cố định nếu có thiết lập, tránh rung lắc hitbox do crop ảnh."""

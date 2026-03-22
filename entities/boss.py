@@ -29,8 +29,8 @@ class BossGoblin(Entity):
         self.scale = 1.8
 
         # Stats - 500 HP như yêu cầu (25-50 sword hits với random 10-20 dmg)
-        self.hp      = 500
-        self.max_hp  = 500
+        self.hp      = 1000
+        self.max_hp  = 1000
         self.move_speed = 120
 
         # Hitbox to hơn nhưng realistic
@@ -147,8 +147,8 @@ class BossMinotaur(Entity):
         self.scale = 2.0  # Larger than Goblin Boss - final boss presence
 
         # Final boss - 700 HP (harder than Goblin Boss)
-        self.hp      = 700
-        self.max_hp  = 700
+        self.hp      = 1500
+        self.max_hp  = 1500
         self.move_speed = 110
 
         # Hitbox to nhất nhưng realistic
