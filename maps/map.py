@@ -1,11 +1,11 @@
-from cocos.tiles import load, RectMapLayer, TmxObjectLayer
+from cocos.tiles import load, RectMapLayer, TmxObjectLayer, Resource
 from cocos.layer import ScrollingManager
 
 
 class GameMapManager:
     def __init__(self, tmx_path):
         self.tmx_path = tmx_path
-        self.tilemap = load(tmx_path)
+        self.tilemap : Resource = load(tmx_path)
         self.scroller = ScrollingManager()
 
         self.walls_layer = None
@@ -20,13 +20,17 @@ class GameMapManager:
         self.boss_room_left_limit = int(self.map_pixel_width * 0.80)
         self.boss_room_center_x = int(self.map_pixel_width * 0.86)
 
+
+        self.scroller.add
+
         for idx, (name, layer) in enumerate(self.tilemap.find(RectMapLayer)):
             lname = (name or "").lower()
+            print(lname)
             if self.walls_layer is None and lname in {"fore", "walls", "wall", "collisions"}:
                 self.walls_layer = layer
             self.scroller.add(layer, z=idx)
 
-        # Read collision/object layers for boss markers and future hitbox checks.
+
         for _, obj_layer in self.tilemap.find(TmxObjectLayer):
             for obj in getattr(obj_layer, "objects", []):
                 self.hitboxes.append(obj)

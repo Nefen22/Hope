@@ -5,7 +5,7 @@
     ],
     "fileStates": {
         "": {
-            "scaleInDock": 1
+            "scaleInDock": 0.33
         },
         "#Tiles": {
             "scaleInEditor": 1
@@ -15,15 +15,32 @@
             "scaleInEditor": 8
         },
         "map21.tmx": {
-            "scale": 0.25,
+            "scale": 0.33,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": -40,
-                "y": -666
+                "x": 2457.575757575758,
+                "y": 189.3939393939395
             }
         },
+        "map21.tmx#Background_1": {
+            "dynamicWrapping": false,
+            "scaleInEditor": 1
+        },
+        "map21.tmx#Salt": {
+            "dynamicWrapping": false
+        },
         "map21.tmx#Tiles": {
+            "dynamicWrapping": false,
             "scaleInDock": 1
+        },
+        "map21.tmx#background": {
+            "dynamicWrapping": true
+        },
+        "map21.tmx#g": {
+            "dynamicWrapping": true
+        },
+        "map21.tmx#h": {
+            "dynamicWrapping": true
         }
     },
     "last.imagePath": "D:/github-project/Hope/assets/images/map/Final",
@@ -44,5 +61,6 @@
     "tileset.tileSize": {
         "height": 16,
         "width": 16
-    }
+    },
+    "tileset.type": 0
 }
