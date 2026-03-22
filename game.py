@@ -1,4 +1,3 @@
-import cocos
 import random
 from cocos.scene import Scene
 from cocos.layer import ScrollableLayer
@@ -9,107 +8,109 @@ from entities.player import PlayerSprite
 from entities.enemy import GoblinWarrior, GoblinGiant, spawn_enemy
 from entities.item import Item
 from entities.block import Block
-from entities.boss import BossGoblin, BossMinotaur, Boss
+from entities.boss import BossGoblin, BossMinotaur
 from ui import HUD
 
-# ── Progression constants ─────────────────────────────────────────────────────
-# States for the boss phase machine
-PHASE_TRAVEL      = "travel"      # Player tiến về cuối map
-PHASE_BOSS1       = "boss1"       # Đánh Boss Goblin
-PHASE_TRANSITION  = "transition"  # Animation chuyển sang boss 2
-PHASE_BOSS2       = "boss2"       # Đánh Boss Minotaur
-PHASE_VICTORY     = "victory"     # Game cleared
+# ── Progression constants ───────────────────────────────────────────────────
+PHASE_TRAVEL      = "travel"
+PHASE_SWITCH_MAP  = "switch_map"
+PHASE_BOSS1       = "boss1"
+PHASE_TRANSITION  = "transition"
+PHASE_BOSS2       = "boss2"
+PHASE_VICTORY     = "victory"
 
-TRANSITION_DURATION  = 3.0   # Thời gian hiển thị thông điệp chuyển màn
-MINOTAUR_SPAWN_DELAY = 4.0   # Sau bao lâu kể từ khi Goblin Boss chết thì spawn Minotaur
+TRANSITION_DURATION  = 3.0
+MINOTAUR_SPAWN_DELAY = 4.0
+MAP_SWITCH_DELAY     = 1.9
+FALL_DEATH_Y         = -180
+
+TRAVEL_MAP_PATH = "assets/map21.tmx"
+BOSS_MAP_PATH = "assets/map.tmx"
 
 
 class GameLayer(ScrollableLayer):
     is_event_handler = True
 
-    # ──────────────────────────────────────────────────────────────────────────
-    def __init__(self, map_manager, hud):
+    def __init__(self, map_manager, hud, mode="travel", player_hp=100, start_score=0):
         super(GameLayer, self).__init__()
 
         self.map_manager  = map_manager
         self.walls_layer  = map_manager.get_walls_layer()
         self.hud          = hud
-        self.items_collected = 0
+        self.mode = mode
+        self.items_collected = start_score
+        self.hud.update_score(self.items_collected)
 
-        # Camera flag
-        self.is_boss_room = False
-
-        # Entity list
         self.entities: list = []
 
-        # ── Player ────────────────────────────────────────────────────────────
-        self.player = PlayerSprite()
-        self.player.position = (42 * 16, 50 * 16)
+        self.player = PlayerSprite(hp=player_hp)
+        self.player.position = (42 * 16, 50 * 16) if mode == "travel" else (20 * 16, 30 * 16)
         self.add(self.player, z=10)
         self.entities.append(self.player)
+        self.hud.update_hp(self.player.hp)
 
-        # ── Static starter enemies / items / blocks (beginning of map) ───────
-        self._spawn_starter_content()
-
-        # ── Procedural content along the path (800 … boss_trigger_x - 400) ──
-        self._spawn_path_content()
-
-        # ── Boss management ───────────────────────────────────────────────────
-        self.boss          = None    # active boss entity
+        self.boss          = None
         self.boss_spawned  = False
         self.boss2_spawned = False
-        self.phase         = PHASE_TRAVEL
+        self.phase         = PHASE_TRAVEL if mode == "travel" else PHASE_BOSS1
         self._transition_timer = 0.0
+        self._map_switch_timer = 0.0
+        self.game_over = False
 
-        # ── Register handlers ─────────────────────────────────────────────────
+        self.hud.hide_endgame()
+        self.hud.hide_transition()
+
+        if self.mode == "travel":
+            self._spawn_starter_content()
+            self._spawn_path_content()
+        else:
+            self.hud.play_screen_transition("⚔ BOSS MAP ⚔", duration=1.8, peak_alpha=190)
+            self._spawn_boss1()
+
         director.window.push_handlers(self.player)
         self.schedule(self.update)
 
-    # ──────────────────────────────────────────────────────────────────────────
     def _add_entity(self, entity, z=9):
         self.add(entity, z=z)
         self.entities.append(entity)
 
     def _spawn_starter_content(self):
-        """Fixed enemies/items/blocks near start."""
-        # One warrior on starter platform area
         w = GoblinWarrior(600, 300, walk_range=250)
         self._add_entity(w)
 
-        # Starting coins for player to collect
         for item_x in [300, 500, 800]:
             self._add_entity(Item(item_x, 300, "Coin"), z=8)
 
-        # Tutorial blocks
         self._add_entity(Block(400, 420, item_type="Invincible"), z=8)
         self._add_entity(Block(450, 420, item_type="Coin"), z=8)
 
     def _spawn_path_content(self):
-        """Procedurally populate the entire path up to the boss room."""
-        boss_dist   = self.map_manager.boss_trigger_x
-        spawn_start = 800
-        step        = 500  # Increased spacing for better pacing
+        boss_dist = self.map_manager.boss_trigger_x
+        spawn_start = 700
+        spawn_end = max(int(boss_dist) - 250, 1800)
+        step = 320
 
-        for x in range(spawn_start, int(boss_dist) - 400, step):
-            # 2-4 enemies at staggered sub-positions for variety
+        for x in range(spawn_start, spawn_end, step):
             num_enemies = random.randint(2, 4)
             for _ in range(num_enemies):
                 ex = x + random.randint(0, step - 100)
                 self._add_entity(spawn_enemy(ex, 300, walk_range=200))
 
-            # 3-5 coins + occasional Invincible
             num_items = random.randint(3, 5)
             for _ in range(num_items):
                 ix = x + random.randint(30, step - 30)
                 itype = random.choice(["Coin", "Coin", "Coin", "Coin", "Invincible"])
                 self._add_entity(Item(ix, 300, itype), z=8)
 
-            # 1-3 breakable blocks
             num_blocks = random.randint(1, 3)
             for _ in range(num_blocks):
                 bx = x + random.randint(50, step - 50)
                 btype = random.choice(["Coin", "Coin", "Invincible"])
                 self._add_entity(Block(bx, 420, item_type=btype), z=8)
+
+    def _transition_to_boss_map(self):
+        hp = max(1, self.player.hp)
+        director.replace(build_game_scene(BOSS_MAP_PATH, mode="boss", player_hp=hp, score=self.items_collected))
 
     # ──────────────────────────────────────────────────────────────────────────
     def spawn_item(self, x, y, item_type):
@@ -119,21 +120,41 @@ class GameLayer(ScrollableLayer):
 
     # ──────────────────────────────────────────────────────────────────────────
     def _spawn_boss1(self):
-        cx = self.map_manager.boss_room_center_x
+        cx = int(self.map_manager.get_map_pixel_width() * 0.60)
         self.boss = BossGoblin(cx, 300)
         self._add_entity(self.boss)
         self.boss_spawned  = True
         self.phase         = PHASE_BOSS1
         self.hud.update_boss_hp(self.boss.hp, self.boss.max_hp, self.boss.NAME)
+        self.hud.play_screen_transition("⚔ BOSS FIGHT: GOBLIN KING ⚔", duration=2.0)
 
     def _spawn_boss2(self):
-        # Minotaur xuất hiện ngay tại trung tâm boss room (cùng phòng nhưng boss mới)
-        cx = self.map_manager.boss_room_center_x + 300
+        cx = int(self.map_manager.get_map_pixel_width() * 0.76)
         self.boss = BossMinotaur(cx, 300)
         self._add_entity(self.boss)
         self.boss2_spawned = True
         self.phase         = PHASE_BOSS2
+
+        self.player.x = max(280, cx - 300)
+        self.player.y = max(self.player.y, 300)
+        self.player.velocity_x = 0
+        self.player.velocity_y = 0
+
         self.hud.update_boss_hp(self.boss.hp, self.boss.max_hp, self.boss.NAME)
+        self.hud.play_screen_transition("☠ FINAL BOSS: MINOTAUR ☠", duration=2.2, peak_alpha=190)
+
+    def _set_player_input_locked(self, locked):
+        self.player.set_input_locked(locked)
+
+    def _trigger_game_over(self, reason):
+        if self.game_over:
+            return
+        self.game_over = True
+        self._set_player_input_locked(True)
+        self.hud.show_endgame("END GAME", reason, on_restart=self.restart_game)
+
+    def restart_game(self):
+        director.replace(build_game_scene())
 
     # ──────────────────────────────────────────────────────────────────────────
     def check_collisions(self):
@@ -207,11 +228,17 @@ class GameLayer(ScrollableLayer):
 
     # ──────────────────────────────────────────────────────────────────────────
     def update(self, dt):
+        if self.game_over:
+            return
+
         # ── Purge fully killed entities ────────────────────────────────────────
         self.entities = [
             e for e in self.entities
             if not getattr(e, '_killed', False) or isinstance(e, PlayerSprite)
         ]
+
+        transition_lock = self.hud.is_transition_playing() or self.phase in (PHASE_TRANSITION, PHASE_SWITCH_MAP)
+        self._set_player_input_locked(transition_lock)
 
         # ── Entity update ──────────────────────────────────────────────────────
         for entity in list(self.entities):
@@ -226,78 +253,95 @@ class GameLayer(ScrollableLayer):
 
         self.check_collisions()
 
+        # ── Endgame conditions ─────────────────────────────────────────────────
+        if self.player.hp <= 0:
+            self.hud.update_hp(0)
+            self._trigger_game_over("Ban da het mau.")
+            return
+        if self.player.y <= FALL_DEATH_Y:
+            self._trigger_game_over("Ban da roi khoi map.")
+            return
 
-        # ── Progress bar ───────────────────────────────────────────────────────
-        boss_dist   = self.map_manager.boss_trigger_x
-        curr_dist   = min(self.player.x, boss_dist)
-        percentage  = (curr_dist / boss_dist * 100) if boss_dist > 0 else 100
 
-        if self.phase == PHASE_TRAVEL:
+        if self.mode == "travel":
+            boss_dist = self.map_manager.boss_trigger_x
+            curr_dist = min(self.player.x, boss_dist)
+            percentage = (curr_dist / boss_dist * 100) if boss_dist > 0 else 100
             self.hud.update_progress(percentage)
 
-        # ── Phase machine ──────────────────────────────────────────────────────
+            if self.phase == PHASE_TRAVEL and percentage >= 100:
+                self.phase = PHASE_SWITCH_MAP
+                self._map_switch_timer = 0.0
+                self.hud.play_screen_transition("► ENTERING BOSS MAP ◄", duration=2.1, peak_alpha=210)
 
-        # Travel → spawn Boss 1
-        if self.phase == PHASE_TRAVEL and percentage >= 100:
-            self._spawn_boss1()
+            elif self.phase == PHASE_SWITCH_MAP:
+                self._map_switch_timer += dt
+                if self._map_switch_timer >= MAP_SWITCH_DELAY:
+                    self._transition_to_boss_map()
+                    return
+        else:
+            if self.phase == PHASE_BOSS1:
+                if self.boss and self.boss.is_dead:
+                    self.phase = PHASE_TRANSITION
+                    self._transition_timer = 0.0
+                    self.hud.boss_defeated(BossGoblin.NAME)
+                    self.hud.play_screen_transition(
+                        "► GOBLIN KING defeated! The Minotaur is coming... ◄",
+                        duration=2.4,
+                        peak_alpha=185
+                    )
 
-        # Boss 1 → transition
-        elif self.phase == PHASE_BOSS1:
-            if self.boss and self.boss.is_dead:
-                self.phase = PHASE_TRANSITION
-                self._transition_timer = 0.0
-                self.hud.boss_defeated(BossGoblin.NAME)
-                self.hud.show_transition(
-                    "► GOBLIN KING defeated! The Minotaur is coming... ◄"
-                )
+            elif self.phase == PHASE_TRANSITION:
+                self._transition_timer += dt
+                if (self._transition_timer >= TRANSITION_DURATION
+                        and self._transition_timer < TRANSITION_DURATION + dt):
+                    self.hud.play_screen_transition(
+                        "⏳ Prepare yourself... Minotaur incoming!",
+                        duration=1.8,
+                        peak_alpha=170
+                    )
+                if not self.boss2_spawned and self._transition_timer >= MINOTAUR_SPAWN_DELAY:
+                    self._spawn_boss2()
 
-        # Transition: đếm thời gian → tự động spawn Minotaur
-        elif self.phase == PHASE_TRANSITION:
-            self._transition_timer += dt
-            if self._transition_timer >= TRANSITION_DURATION:
-                self.hud.hide_transition()
-                self.hud.show_transition("⏳ Prepare yourself... Minotaur incoming!")
-            if not self.boss2_spawned and self._transition_timer >= MINOTAUR_SPAWN_DELAY:
-                self.hud.hide_transition()
-                self._spawn_boss2()
+            elif self.phase == PHASE_BOSS2:
+                if self.boss and self.boss.is_dead:
+                    self.phase = PHASE_VICTORY
+                    self.hud.boss_defeated(BossMinotaur.NAME)
+                    self.hud.play_screen_transition(
+                        "✦ YOU WIN! All Bosses Defeated! ✦",
+                        duration=3.0,
+                        peak_alpha=210
+                    )
 
-        # Boss 2 → victory
-        elif self.phase == PHASE_BOSS2:
-            if self.boss and self.boss.is_dead:
-                self.phase = PHASE_VICTORY
-                self.hud.boss_defeated(BossMinotaur.NAME)
-                self.hud.show_transition("✦ YOU WIN! All Bosses Defeated! ✦")
-
-        # ── Camera ────────────────────────────────────────────────────────────
         if self.parent:
-            if self.phase in (PHASE_BOSS1, PHASE_BOSS2):
-                # Camera khóa vào trung tâm boss room
-                self.parent.set_focus(self.map_manager.boss_room_center_x, 300)
-                # Soft wall: ngăn player lui
-                if self.player.x < self.map_manager.boss_room_left_limit:
-                    self.player.x = self.map_manager.boss_room_left_limit
+            if self.mode == "boss":
+                focus_x = self.boss.x if self.boss else self.player.x
+                self.parent.set_focus(focus_x, 320)
             else:
-                # Mario-style follow trong travel và transition
                 self.parent.set_focus(self.player.x, self.player.y)
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
-def main():
-    director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
-
+def build_game_scene(map_path=TRAVEL_MAP_PATH, mode="travel", player_hp=100, score=0):
     hud_layer = HUD()
-    map_mgr   = GameMapManager("assets/map21.tmx")
+    map_mgr   = GameMapManager(map_path)
     scroller  = map_mgr.get_scrolling_manager()
 
-    game_layer = GameLayer(map_mgr, hud_layer)
+    game_layer = GameLayer(map_mgr, hud_layer, mode=mode, player_hp=player_hp, start_score=score)
     scroller.add(game_layer, z=5)
 
     scene = Scene()
     scene.add(scroller,   z=0)
     scene.add(hud_layer, z=10)
 
-    director.run(scene)
+    return scene
+
+
+def main():
+    director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
+
+    director.run(build_game_scene())
 
 
 if __name__ == '__main__':
