@@ -29,8 +29,6 @@ def load_frames(folder_path, duration=0.08, loop=True):
     frames = []
     for f in files:
         img = pyglet.image.load(os.path.join(folder_path, f))
-        img.anchor_x = img.width // 2
-        img.anchor_y = 0  # Bottom anchor for ground alignment
         frames.append(pyglet.image.AnimationFrame(img, duration))
     if not loop:
         frames[-1].duration = None
@@ -60,7 +58,7 @@ class GoblinWarrior(Entity):
 
         super(GoblinWarrior, self).__init__(initial)
         self.position   = (x, y)
-        self.scale      = 1.0
+        self.scale      = 0.8
 
         # Stats
         self.hp         = 50
@@ -70,8 +68,8 @@ class GoblinWarrior(Entity):
         self.is_dead    = False
 
         # Hitbox
-        self.hitbox_w = 28
-        self.hitbox_h = 45
+        self.hitbox_w = 40 * self.scale
+        self.hitbox_h = 100 * self.scale
 
         # Patrol
         self.start_x    = x
@@ -217,7 +215,7 @@ class GoblinGiant(Entity):
 
         super(GoblinGiant, self).__init__(initial)
         self.position   = (x, y)
-        self.scale      = 1.3
+        self.scale      = 0.8
 
         # Stats - Giant khó hơn
         self.hp         = 100
@@ -227,8 +225,8 @@ class GoblinGiant(Entity):
         self.is_dead    = False
 
         # Hitbox
-        self.hitbox_w = 42
-        self.hitbox_h = 62
+        self.hitbox_w = 80 * self.scale
+        self.hitbox_h = 120 * self.scale
 
         # Patrol
         self.start_x    = x

@@ -98,6 +98,36 @@ SPAWN_ZONES = [
     (1616, 1758, 780,  "floor2"),   # Platform cao cuối
 ]
 
+class DebugHitboxLayer(ScrollableLayer):
+    def __init__(self, rects):
+        super().__init__()
+        self.rects = rects
+        self.batch = pyglet.graphics.Batch()
+        self.lines = []
+
+        self._build()
+
+    def _build(self):
+        for rect in self.rects:
+            x, y, w, h = rect.x, rect.y, rect.width, rect.height
+
+            lines = [
+                pyglet.shapes.Line(x, y, x + w, y, batch=self.batch),
+                pyglet.shapes.Line(x + w, y, x + w, y + h, batch=self.batch),
+                pyglet.shapes.Line(x + w, y + h, x, y + h, batch=self.batch),
+                pyglet.shapes.Line(x, y + h, x, y, batch=self.batch),
+            ]
+
+            for l in lines:
+                l.color = (255, 0, 0)
+                l.opacity = 180
+
+            self.lines.extend(lines)
+
+    def draw(self):
+        super().draw()
+        self.batch.draw()
+
 
 class GameLayer(ScrollableLayer):
 
@@ -112,7 +142,7 @@ class GameLayer(ScrollableLayer):
 
 
         self.map_manager = map_manager
-        self.hitboxes  = map_manager.hitboxes
+        self.hitboxes  = map_manager.get_walls_layer()
 
         self.hud          = hud
 
@@ -781,6 +811,8 @@ def build_game_scene(map_path=TRAVEL_MAP_PATH, mode="travel", player_hp=100, sco
 
     scroller  = map_mgr.get_scrolling_manager()
 
+    debug_layer = DebugHitboxLayer(map_mgr.get_walls_layer())
+    scroller.add(debug_layer, z=100)
 
 
     game_layer = GameLayer(map_mgr, hud_layer, mode=mode, player_hp=player_hp, start_score=score)

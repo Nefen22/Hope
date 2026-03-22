@@ -7,28 +7,28 @@ class Entity(Sprite):
         super(Entity, self).__init__(image)
         # Thông số sinh tồn
         self.hp = 500
-        
+
         # Trạng thái vật lý
         self.velocity_x = 0
         self.velocity_y = 0
         self.is_jumping = False
         self.on_ground = False
-        
+
         # Hằng số vật lý mặc định (có thể ghi đè ở class con)
         self.gravity = -500
         self.move_speed = 200
         self.jump_speed = 400
-        
+
     def get_logical_rect(self):
         """Trả về bounding box cố định nếu có thiết lập, tránh rung lắc hitbox do crop ảnh."""
         hit_w = getattr(self, 'hitbox_w', None)
         hit_h = getattr(self, 'hitbox_h', None)
-        
+
         if hit_w is not None and hit_h is not None:
             # Tạo Rect bao quanh toạ độ chính tâm x, y
             import cocos.rect
-            return cocos.rect.Rect(self.x - hit_w/2, self.y - hit_h/2, hit_w, hit_h)
-            
+            return cocos.rect.Rect(self.x - hit_w / 2, self.y - hit_h / 2, hit_w, hit_h)
+
         # Fallback: Trả về bounding box (Rect) của ảnh, luôn có rect dương
         r = self.get_rect()
         left = min(r.left, r.right)
@@ -36,85 +36,66 @@ class Entity(Sprite):
         bottom = min(r.bottom, r.top)
         top = max(r.bottom, r.top)
         return type(r)(left, bottom, right - left, top - bottom)
-    
+
     def update_physics(self, dt, hitboxes):
-        """Xử lý di chuyển, trọng lực và chống va chạm gạch cơ bản"""
-        # Áp dụng trọng lực thay đổi vận tốc trục Y
+        """Physics + collision chuẩn (fix dính trần / không nhảy được)"""
+
+        EPS = 0.1  # chống dính collision ảo
+
+        # ── 1. Gravity ─────────────────────────────────────────────
         self.velocity_y += self.gravity * dt
-        
-        # Tính toán quãng đường di chuyển dự kiến
+
         dx = self.velocity_x * dt
         dy = self.velocity_y * dt
-        
-        last_rect = self.get_logical_rect()
-        
-        # KIỂM TRA VA CHẠM TRỤC X
-        new_rect_x = last_rect.copy()
-        new_rect_x.x += dx
-        
-        collide_x = False
-        import cocos.rect
-        if hitboxes:
-            for obj in hitboxes:
-                obj_name = (getattr(obj, "name", "") or "").lower()
-                if obj_name == "boss_trigger":
-                    continue
-                # cocos object layers usually have x, y at bottom-left if parsed by cocos
-                obj_w = getattr(obj, "width", 0)
-                obj_h = getattr(obj, "height", 0)
-                if obj_w == 0 or obj_h == 0:
-                    continue
-                obj_rect = cocos.rect.Rect(obj.x, obj.y, obj_w, obj_h)
-                
-                if new_rect_x.intersects(obj_rect):
-                    collide_x = True
+
+        # ── 2. MOVE X ─────────────────────────────────────────────
+        self.x += dx
+        player_rect = self.get_logical_rect()
+
+        for rect in hitboxes:
+            if player_rect.intersects(rect):
+                # chỉ xử lý nếu overlap theo X thật sự
+                overlap_x = min(player_rect.right, rect.right) - max(player_rect.left, rect.left)
+                overlap_y = min(player_rect.top, rect.top) - max(player_rect.bottom, rect.bottom)
+
+                if overlap_x > 0 and overlap_y > 0:
                     if dx > 0:
-                        self.x = obj_rect.left - last_rect.width / 2
+                        self.x = rect.left - player_rect.width / 2 - EPS
                     elif dx < 0:
-                        self.x = obj_rect.right + last_rect.width / 2
-                    break
-                    
-        if collide_x:
-            self.velocity_x = 0
-            dx = 0
-            
-        # KIỂM TRA VA CHẠM TRỤC Y
-        new_rect_y = self.get_logical_rect().copy()
-        new_rect_y.x += dx 
-        new_rect_y.y += dy
-        
-        collide_y = False
-        floor_hit = False
-        
-        if hitboxes:
-            for obj in hitboxes:
-                obj_name = (getattr(obj, "name", "") or "").lower()
-                if obj_name == "boss_trigger":
-                    continue
-                obj_w = getattr(obj, "width", 0)
-                obj_h = getattr(obj, "height", 0)
-                if obj_w == 0 or obj_h == 0:
-                    continue
-                obj_rect = cocos.rect.Rect(obj.x, obj.y, obj_w, obj_h)
-                
-                if new_rect_y.intersects(obj_rect):
-                    collide_y = True
-                    if self.velocity_y < 0:
-                        floor_hit = True 
-                        # Nếu rớt xuống trúng mặt đất, y dời lên
-                        self.y = obj_rect.top + new_rect_y.height / 2
-                    elif self.velocity_y > 0:
-                        # Đụng đầu trần nhà
-                        self.y = obj_rect.bottom - new_rect_y.height / 2
-                    break
-            
+                        self.x = rect.right + player_rect.width / 2 + EPS
+
+                    self.velocity_x = 0
+                    player_rect = self.get_logical_rect()
+
+        # ── 3. MOVE Y ─────────────────────────────────────────────
         self.on_ground = False
-        if collide_y:
-            self.velocity_y = 0
-            dy = 0
-            if floor_hit:
-                self.on_ground = True
-                self.is_jumping = False
-                
-        # Áp dụng toạ độ mới cuối cùng
-        self.position = (self.x + dx, self.y + dy)
+        self.y += dy
+        player_rect = self.get_logical_rect()
+
+        for rect in hitboxes:
+            if player_rect.intersects(rect):
+
+                overlap_x = min(player_rect.right, rect.right) - max(player_rect.left, rect.left)
+                overlap_y = min(player_rect.top, rect.top) - max(player_rect.bottom, rect.bottom)
+
+                # ❗ cực quan trọng: phải có overlap X đủ lớn mới tính Y collision
+                if overlap_x < player_rect.width * 0.3:
+                    continue
+
+                if overlap_y > 0:
+                    # rơi xuống → chạm đất
+                    if self.velocity_y < 0:
+                        self.y = rect.top + player_rect.height / 2 + EPS
+                        self.velocity_y = 0
+                        self.on_ground = True
+                        self.is_jumping = False
+
+                    # bay lên → đập đầu
+                    elif self.velocity_y > 0:
+                        self.y = rect.bottom - player_rect.height / 2 - EPS
+                        self.velocity_y = 0
+
+                    player_rect = self.get_logical_rect()
+
+        # ── 4. APPLY POSITION ─────────────────────────────────────
+        self.position = (self.x, self.y)

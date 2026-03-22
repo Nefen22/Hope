@@ -54,14 +54,11 @@ def load_animations(folder_path):
         frames = []
         for i in range(frame_count):
             frame_img = image.get_region(
-                x=i * frame_block + 40,  # Fixed offset for cleaner crop
+                x=i * frame_block,  # Fixed offset for cleaner crop
                 y=0,
-                width=width,
+                width=120,
                 height=80
             )
-            # Set anchor to bottom-center so player stands on ground properly
-            frame_img.anchor_x = width // 2
-            frame_img.anchor_y = 0  # Bottom anchor for ground alignment
             frames.append(frame_img)
 
         animation = pyglet.image.Animation.from_image_sequence(
@@ -82,16 +79,15 @@ class PlayerSprite(Entity):
         self.hp = hp
         self.mass = mass
         self.scale = 1.5
-
         # Hitbox nhỏ gọn, đứng đúng mặt đất
-        self.hitbox_w = 30
-        self.hitbox_h = 50
+        self.hitbox_w = 40 * self.scale
+        self.hitbox_h = 80 * self.scale
         self.locktimer = 0
         self.isGoingtoRight = True
-        
+
         self.current_state = "Idle"
         self.keys = set()
-        
+
         # Biến trạng thái chiến đấu
         self.is_invincible = False
         self.invincible_timer = 0
@@ -99,12 +95,21 @@ class PlayerSprite(Entity):
         self.attack_rect = None # Vùng chém kiếm
         self.input_locked = False
 
+    def get_hitbox(self):
+        import cocos.rect
+        return cocos.rect.Rect(
+            self.x - self.hitbox_w / 2,
+            self.y,
+            self.hitbox_w,
+            self.hitbox_h
+        )
+
     def set_input_locked(self, locked):
         self.input_locked = bool(locked)
         if self.input_locked:
             self.keys.clear()
             self.velocity_x = 0
-        
+
     def play(self, state):
         if self.current_state != state:
             self.current_state = state
@@ -114,7 +119,7 @@ class PlayerSprite(Entity):
         if self.input_locked:
             return
         self.keys.add(symbol)
-        
+
         # Nhảy
         if symbol == key.SPACE and self.on_ground:
             self.velocity_y = self.jump_speed
@@ -126,7 +131,7 @@ class PlayerSprite(Entity):
             return
         if symbol in self.keys:
             self.keys.remove(symbol)
-            
+
         # Thả phím di chuyển thì fix trôi người
         if symbol == key.LEFT and self.velocity_x < 0:
             self.velocity_x = 0
@@ -135,11 +140,11 @@ class PlayerSprite(Entity):
 
     def lock_action(self, dt):
         lock_action = False
-        
+
         if self.locktimer > 0:
             self.locktimer = max(0, self.locktimer - dt)
             return True
-            
+
         if key.X in self.keys:
             self.play("Attack")
             lock_action = True
@@ -158,18 +163,18 @@ class PlayerSprite(Entity):
         if lock_action:
             self.locktimer = len(self.animations[self.current_state].frames) * ANIM_SCALE
             list(map(lambda x: self.on_key_release(x, None), LOCK_ACTION))
-            
+
             # Gắn hitbox kiếm ở đằng trước nhân vật
             import cocos.rect
             at_w = 50  # Wider attack range for better feel
             at_h = 55
             offset_x = 45 if self.isGoingtoRight else -45
             self.attack_rect = cocos.rect.Rect(self.x + offset_x - at_w/2, self.y - at_h/2, at_w, at_h)
-            
+
             return True
-            
+
         return False
-        
+
     def take_damage(self, amount):
         if self.is_invincible: return False
         self.hp -= amount
@@ -186,7 +191,7 @@ class PlayerSprite(Entity):
             if self.invincible_timer <= 0:
                 self.is_invincible = False
                 self.opacity = 255
-                
+
         if self.input_locked:
             self.velocity_x = 0
             self.is_attacking = False
@@ -201,21 +206,21 @@ class PlayerSprite(Entity):
             # Vẫn gọi update_physics để bị rớt tự do khi đang đánh trên không
             self.update_physics(dt, walls_layer)
             return
-            
+
         self.locktimer = 0
         self.is_attacking = False
         self.attack_rect = None
-        
+
         # 2. XỬ LÝ NHẬN INPUT DI CHUYỂN
         if key.RIGHT in self.keys:
             self.velocity_x = self.move_speed
             self.isGoingtoRight = True
-            self.scale_x = 1.5
+            self.scale_x = 1
         elif key.LEFT in self.keys:
             self.velocity_x = -self.move_speed
             self.isGoingtoRight = False
-            self.scale_x = -1.5
-            
+            self.scale_x = -1
+
         # 3. MÁY TRẠNG THÁI ANIMATION (State Machine)
         if not self.on_ground:
             if self.velocity_y > 0:
@@ -227,6 +232,6 @@ class PlayerSprite(Entity):
                 self.play("Run")
             else:
                 self.play("Idle")
-                
+
         # 4. GỌI VẬT LÝ VÀ VA CHẠM TỪ LỚP CHA
         self.update_physics(dt, walls_layer)
