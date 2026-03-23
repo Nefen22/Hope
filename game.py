@@ -1,5 +1,6 @@
 import random
 import math
+from menus.main_menu import MainMenu
 import pyglet
 
 from cocos.scene import Scene
@@ -46,7 +47,7 @@ TRANSITION_DURATION  = 3.0
 
 MINOTAUR_SPAWN_DELAY = 4.0
 
-MAP_SWITCH_DELAY     = 1.9
+MAP_SWITCH_DELAY     = 2.1
 
 FALL_DEATH_Y         = -180
 
@@ -685,35 +686,42 @@ class GameLayer(ScrollableLayer):
 
 
         if self.mode == "travel":
+            # 1. Khởi tạo cờ đánh dấu điểm quay đầu
+            if not hasattr(self, 'checkpoint_reached'):
+                self.checkpoint_reached = False
 
-            boss_dist = self.map_manager.boss_trigger_x
+            # 2. Định nghĩa các mốc lộ trình (dựa trên tọa độ map thực tế)
+            start_x = 672        # Điểm xuất phát (42 * 16)
+            turn_x = 1900        # Mép phải map (điểm rơi xuống tầng 2)
+            end_x = 650          # Điểm kết thúc ở bên trái tầng 2
+            
+            # 3. Kích hoạt cờ khi đến điểm quay đầu
+            if self.player.x >= turn_x:
+                self.checkpoint_reached = True
 
-            curr_dist = min(self.player.x, boss_dist)
+            # 4. Tính toán quãng đường đã di chuyển
+            if not self.checkpoint_reached:
+                # Chặng 1: Đi từ Trái sang Phải
+                traveled = max(0, self.player.x - start_x)
+            else:
+                # Chặng 2: Đi từ Phải về Trái
+                traveled = (turn_x - start_x) + max(0, turn_x - self.player.x)
 
-            percentage = (curr_dist / boss_dist * 100) if boss_dist > 0 else 100
-
+            # 5. Cập nhật phần trăm tiến trình
+            total_dist = (turn_x - start_x) + (turn_x - end_x)
+            percentage = min(100, max(0, (traveled / total_dist) * 100))
+            
             self.hud.update_progress(percentage)
 
-
-
             if self.phase == PHASE_TRAVEL and percentage >= 100:
-
                 self.phase = PHASE_SWITCH_MAP
-
                 self._map_switch_timer = 0.0
-
                 self.hud.play_screen_transition("► ENTERING BOSS MAP ◄", duration=2.1, peak_alpha=210)
 
-
-
             elif self.phase == PHASE_SWITCH_MAP:
-
                 self._map_switch_timer += dt
-
                 if self._map_switch_timer >= MAP_SWITCH_DELAY:
-
                     self._transition_to_boss_map()
-
                     return
 
         else:
@@ -837,10 +845,7 @@ def build_game_scene(map_path=TRAVEL_MAP_PATH, mode="travel", player_hp=100, sco
 def main():
 
     director.init(width=800, height=600, caption="Hope – Goblin King & Minotaur")
-
-
-
-    director.run(build_game_scene())
+    director.run(MainMenu.get_scene())
 
 
 

@@ -38,8 +38,6 @@ class Entity(Sprite):
         return type(r)(left, bottom, right - left, top - bottom)
 
     def update_physics(self, dt, hitboxes):
-        """Physics + collision chuẩn (fix dính trần / không nhảy được)"""
-
         EPS = 0.1  # chống dính collision ảo
 
         # ── 1. Gravity ─────────────────────────────────────────────
@@ -54,11 +52,11 @@ class Entity(Sprite):
 
         for rect in hitboxes:
             if player_rect.intersects(rect):
-                # chỉ xử lý nếu overlap theo X thật sự
                 overlap_x = min(player_rect.right, rect.right) - max(player_rect.left, rect.left)
                 overlap_y = min(player_rect.top, rect.top) - max(player_rect.bottom, rect.bottom)
 
-                if overlap_x > 0 and overlap_y > 0:
+                # Chỉ coi là đâm vào TƯỜNG nếu mức độ xuyên thấu X nhỏ hơn Y
+                if overlap_x > 0 and overlap_y > 0 and overlap_x < overlap_y:
                     if dx > 0:
                         self.x = rect.left - player_rect.width / 2 - EPS
                     elif dx < 0:
@@ -74,15 +72,11 @@ class Entity(Sprite):
 
         for rect in hitboxes:
             if player_rect.intersects(rect):
-
                 overlap_x = min(player_rect.right, rect.right) - max(player_rect.left, rect.left)
                 overlap_y = min(player_rect.top, rect.top) - max(player_rect.bottom, rect.bottom)
 
-                # ❗ cực quan trọng: phải có overlap X đủ lớn mới tính Y collision
-                if overlap_x < player_rect.width * 0.3:
-                    continue
-
-                if overlap_y > 0:
+                # Chỉ coi là chạm SÀN/TRẦN nếu mức độ xuyên thấu Y nhỏ hơn hoặc bằng X
+                if overlap_x > 0 and overlap_y > 0 and overlap_y <= overlap_x:
                     # rơi xuống → chạm đất
                     if self.velocity_y < 0:
                         self.y = rect.top + player_rect.height / 2 + EPS

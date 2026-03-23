@@ -26,7 +26,7 @@ class BossGoblin(Entity):
 
         super(BossGoblin, self).__init__(initial)
         self.position = (x, y)
-        self.scale = 1.8
+        self.scale = 1.5
 
         # Stats - 500 HP như yêu cầu (25-50 sword hits với random 10-20 dmg)
         self.hp      = 1000
@@ -144,7 +144,7 @@ class BossMinotaur(Entity):
 
         super(BossMinotaur, self).__init__(initial)
         self.position = (x, y)
-        self.scale = 2.0  # Larger than Goblin Boss - final boss presence
+        self.scale = 1.7  # Larger than Goblin Boss - final boss presence
 
         # Final boss - 700 HP (harder than Goblin Boss)
         self.hp      = 1500
